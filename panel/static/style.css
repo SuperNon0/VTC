@@ -599,3 +599,224 @@ code {
   border-radius: 4px;
   padding: 1px 5px;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   10. Application taxi/VTC — ajouts (n'utilisent QUE les variables :root).
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* --- Navigation applicative sous la topbar ------------------------------- */
+.appnav {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.5rem 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 39;
+}
+.appnav::-webkit-scrollbar { display: none; }
+.appnav-lnk {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.appnav-lnk:hover { color: var(--text); }
+.appnav-lnk.active {
+  color: var(--accent);
+  border-color: var(--border);
+  background: rgba(232, 197, 71, 0.06);
+}
+.appnav-out { margin-left: auto; }
+
+/* --- Conteneur & en-têtes ------------------------------------------------ */
+.tx-main { max-width: 720px; margin: 0 auto; padding: 18px 16px 60px; }
+.tx-form-wrap { max-width: 560px; }
+.tx-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+.tx-muted { color: var(--muted); font-weight: 400; }
+
+/* --- Bandeau d'activation des notifications ------------------------------ */
+.tx-push {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  border-color: rgba(167, 139, 250, 0.35);
+}
+.tx-ios-note { color: var(--pending); }
+
+/* --- Journée du calendrier ----------------------------------------------- */
+.tx-day { margin-bottom: 1.4rem; }
+.tx-day-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Carte d'une course -------------------------------------------------- */
+.tx-course {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.7rem;
+}
+.tx-course-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0.4rem;
+}
+.tx-time {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  color: var(--accent);
+  line-height: 1;
+}
+.tx-statut {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tx-st-a_faire { color: var(--pending); border-color: rgba(167, 139, 250, 0.4); }
+.tx-st-en_cours { color: var(--accent-3); border-color: rgba(232, 124, 71, 0.4); }
+.tx-st-terminee { color: var(--accent-2); border-color: rgba(79, 195, 161, 0.4); }
+.tx-st-annulee { color: var(--muted); text-decoration: line-through; }
+
+.tx-client { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+.tx-tel { color: var(--accent-2); font-size: 0.78rem; }
+.tx-trajet {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.tx-pt { }
+.tx-arrow { color: var(--accent); }
+.tx-notes {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-left: 2px solid var(--border);
+  padding-left: 0.6rem;
+}
+.tx-course-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+.tx-prix {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+.tx-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+/* --- Champs de formulaire ------------------------------------------------ */
+.tx-field { margin-bottom: 0.9rem; }
+.tx-input,
+.tx-select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  outline: none;
+}
+.tx-input:focus,
+.tx-select:focus { border-color: var(--accent); }
+.tx-select { width: auto; font-size: 0.72rem; padding: 0.4rem 0.6rem; }
+.tx-area { resize: vertical; line-height: 1.5; }
+.tx-form { display: block; }
+
+/* --- Boutons de lieux fréquents (chips) ---------------------------------- */
+.tx-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.tx-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tx-chip:hover { color: var(--accent); border-color: var(--accent); }
+
+/* --- Autocomplétion clients ---------------------------------------------- */
+.tx-ac { position: relative; }
+.tx-ac-list {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.tx-ac-list.open { display: block; }
+.tx-ac-item { padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.82rem; }
+.tx-ac-item:hover { background: var(--surface); }
+
+/* --- Statistiques (aperçu) ----------------------------------------------- */
+.tx-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; }
+.tx-stat { text-align: center; }
+
+/* --- Toast --------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(4rem);
+  background: var(--accent);
+  color: #0e0f11;
+  font-size: 0.75rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 20px;
+  opacity: 0;
+  transition: 0.25s;
+  pointer-events: none;
+  z-index: 600;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

@@ -1,8 +1,15 @@
 """Accès SQLite : schéma, connexion par requête, amorce du super-admin.
 
 Schéma conforme à docs/authentification-v2.md §7 (table `comptes`) + un journal
-d'audit (§9.2). Le cloisonnement du contenu métier (§7 « partagée vs cloisonnée »)
-est laissé à chaque projet — il n'y a pas encore de contenu dans le site de base.
+d'audit (§9.2), enrichi du modèle métier taxi/VTC (cahier des charges §5) :
+courses, clients habitués, grilles tarifaires, lieux fréquents et abonnements
+Web Push.
+
+Décision de cloisonnement (auth-v2 §7) : les courses forment une table
+**partagée** avec propriété par ligne. Chaque course distingue explicitement le
+**créateur** (qui l'a saisie) du **conducteur assigné** (à qui elle est
+confiée) ; toute la logique d'affichage/notif/stats se base sur le conducteur
+assigné, jamais sur le créateur (cahier §5).
 """
 
 from __future__ import annotations
@@ -36,16 +43,80 @@ CREATE TABLE IF NOT EXISTS audit (
     detail        TEXT
 );
 
--- Contenu du hub (bibliothèque partagée) : une seule ligne JSON.
-CREATE TABLE IF NOT EXISTS hub (
-    id   INTEGER PRIMARY KEY CHECK (id = 1),
-    data TEXT NOT NULL
-);
-
--- Réglages configurables depuis l'UI (ex. Cloudflare) : clé/valeur.
+-- Réglages configurables depuis l'UI (Cloudflare, fournisseur IA, VAPID…) : clé/valeur.
 CREATE TABLE IF NOT EXISTS app_settings (
     key   TEXT PRIMARY KEY,
     value TEXT
+);
+
+-- ─────────────────────────── Modèle métier taxi/VTC ───────────────────────────
+
+-- Clients habitués (cahier §6.4).
+CREATE TABLE IF NOT EXISTS clients (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom       TEXT NOT NULL,
+    telephone TEXT,
+    adresses  TEXT,             -- JSON : liste d'adresses fréquentes
+    notes     TEXT,
+    cree      INTEGER
+);
+
+-- Lieux fréquents présélectionnables dans le formulaire (cahier §6.2).
+CREATE TABLE IF NOT EXISTS lieux (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom     TEXT NOT NULL,      -- ex : « Gare du Grau-du-Roi »
+    adresse TEXT,               -- adresse complète (optionnelle)
+    ordre   INTEGER NOT NULL DEFAULT 0
+);
+
+-- Grilles tarifaires de base (cahier §6.3), gérées par le super-admin.
+CREATE TABLE IF NOT EXISTS tarifs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    libelle    TEXT NOT NULL,   -- ex : « Gare Grau-du-Roi → centre ville »
+    prix       REAL NOT NULL,
+    concurrent TEXT,            -- fourchette concurrents indicative, saisie à la main
+    ordre      INTEGER NOT NULL DEFAULT 0
+);
+
+-- Courses (cahier §5). Créateur ≠ conducteur assigné.
+CREATE TABLE IF NOT EXISTS courses (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_nom     TEXT,
+    client_tel     TEXT,
+    depart         TEXT,         -- adresse de prise en charge
+    arrivee        TEXT,         -- adresse de dépose
+    quand          INTEGER,      -- timestamp (date + heure de la course)
+    prix           REAL,
+    prix_source    TEXT,         -- 'grille' | 'autre' | 'distance' (évolution §6.3)
+    tarif_id       INTEGER,      -- grille choisie, le cas échéant
+    distance_km    REAL,         -- réservé à la suggestion par distance (§6.3, différé)
+    statut         TEXT NOT NULL DEFAULT 'a_faire',  -- a_faire|en_cours|terminee|annulee
+    createur_id    INTEGER NOT NULL,   -- compte qui a saisi la course
+    conducteur_id  INTEGER NOT NULL,   -- compte assigné (base de l'affichage/notif/stats)
+    client_id      INTEGER,            -- client habitué lié (optionnel)
+    notes          TEXT,
+    cree           INTEGER,
+    maj            INTEGER,
+    FOREIGN KEY (createur_id)   REFERENCES comptes(id),
+    FOREIGN KEY (conducteur_id) REFERENCES comptes(id),
+    FOREIGN KEY (tarif_id)      REFERENCES tarifs(id) ON DELETE SET NULL,
+    FOREIGN KEY (client_id)     REFERENCES clients(id) ON DELETE SET NULL
+);
+
+-- Index pour requêtes par conducteur/période (lisibilité stats §6.7, différé).
+CREATE INDEX IF NOT EXISTS idx_courses_conducteur ON courses(conducteur_id, quand);
+CREATE INDEX IF NOT EXISTS idx_courses_createur   ON courses(createur_id, quand);
+
+-- Abonnements Web Push (cahier §6.5 / §7). Un appareil = une souscription.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    compte_id INTEGER NOT NULL,
+    endpoint  TEXT NOT NULL UNIQUE,
+    p256dh    TEXT NOT NULL,
+    auth      TEXT NOT NULL,
+    ua        TEXT,
+    cree      INTEGER,
+    FOREIGN KEY (compte_id) REFERENCES comptes(id) ON DELETE CASCADE
 );
 """
 

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Extraction IA — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}extraction IA{% endblock %}
+
+{% block content %}
+<div class="acct-wrap" style="max-width:560px">
+  <div style="margin-bottom:14px">
+    <a href="{{ url_for('accounts.parametres') }}" class="btn ghost small">← Retour aux paramètres</a>
+  </div>
+
+  <section class="acct-section">
+    <h3>Extraction automatique (IA)</h3>
+    <div class="fl-card">
+      {% if impersonating %}
+        <p class="access-text" style="text-align:left">Reviens à ton compte pour modifier ces réglages.</p>
+      {% else %}
+      <p class="access-note" style="text-align:left;margin:0 0 12px">
+        Choisis le fournisseur d'IA (gratuit, sans carte bancaire) qui extrait les
+        infos client depuis un message. Tu peux en changer à tout moment sans
+        repasser par le développement.
+      </p>
+      <form method="post" action="{{ url_for('config.ia_save') }}"
+            style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label class="fl-label" for="provider">Fournisseur</label>
+          <select class="tx-input" name="provider" id="provider" onchange="syncPlaceholder()">
+            <option value="" {{ '' if cfg.provider else 'selected' }}>— Désactivé —</option>
+            {% for code, label in providers.items() %}
+            <option value="{{ code }}" {{ 'selected' if cfg.provider == code else '' }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="fl-label" for="model">Modèle (optionnel)</label>
+          <input class="tx-input" type="text" name="model" id="model" value="{{ cfg.model }}"
+                 placeholder="laisser vide pour le modèle par défaut">
+          <p class="access-note" style="text-align:left;margin:.3rem 0 0" id="model-hint"></p>
+        </div>
+        <div>
+          <label class="fl-label" for="api_key">Clé API</label>
+          <input class="tx-input" type="password" name="api_key" id="api_key" autocomplete="off"
+                 placeholder="{{ '•••••• (déjà enregistrée — laisser vide pour conserver)' if cfg.has_key else 'colle ta clé API' }}">
+          {% if cfg.has_key %}
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer">
+            <input type="checkbox" name="clear_key" value="1">
+            <span class="access-text" style="text-align:left;margin:0">Effacer la clé enregistrée</span>
+          </label>
+          {% endif %}
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn primary">Enregistrer</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+    <p class="access-note" style="text-align:left;margin-top:8px">
+      Statut actuel :
+      {% if cfg.provider and cfg.has_key %}
+        <b style="color:var(--green)">actif</b> ({{ providers.get(cfg.provider, cfg.provider) }}, modèle {{ cfg.model }})
+      {% else %}
+        <b style="color:var(--muted)">non configuré</b>
+      {% endif %}
+    </p>
+    <p class="access-note" style="text-align:left;margin-top:4px">
+      Obtenir une clé gratuite : Google AI Studio (Gemini), console.mistral.ai
+      (Mistral) ou console.groq.com (Groq).
+    </p>
+  </section>
+</div>
+
+<script>
+  var DEFAULTS = {{ defaults|tojson }};
+  function syncPlaceholder() {
+    var p = document.getElementById('provider').value;
+    document.getElementById('model-hint').textContent =
+      p && DEFAULTS[p] ? 'Par défaut : ' + DEFAULTS[p] : '';
+  }
+  syncPlaceholder();
+</script>
+{% endblock %}

@@ -50,6 +50,28 @@
     </p>
   </section>
 
+  <!-- ------------------------------------------------ configuration taxi -->
+  <section class="acct-section">
+    <h3>Configuration taxi</h3>
+    <div class="fl-card" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span class="access-text" style="text-align:left;margin:0">Extraction automatique des
+          infos client (fournisseur IA gratuit + clé API).</span>
+        <a class="btn ghost small" href="{{ url_for('config.ia') }}">Extraction IA</a>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span class="access-text" style="text-align:left;margin:0">Grilles tarifaires de base
+          proposées lors de la création d'une course.</span>
+        <a class="btn ghost small" href="{{ url_for('config.tarifs') }}">Grilles tarifaires</a>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span class="access-text" style="text-align:left;margin:0">Lieux fréquents (boutons de
+          présélection rapide dans le formulaire).</span>
+        <a class="btn ghost small" href="{{ url_for('config.lieux') }}">Lieux fréquents</a>
+      </div>
+    </div>
+  </section>
+
   <!-- ------------------------------------------------ Cloudflare / accès -->
   <section class="acct-section">
     <h3>Cloudflare / Accès (Zero Trust)</h3>

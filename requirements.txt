@@ -3,3 +3,5 @@ requests>=2.31
 PyJWT[crypto]>=2.8
 python-dotenv>=1.0
 gunicorn>=21.2
+# Web Push (notifications PWA, cahier §6.5/§7). Tire cryptography + py-vapid.
+pywebpush>=1.14

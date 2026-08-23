@@ -5,8 +5,13 @@
 
 ## 1. Ce qu'est ce dépôt
 
-Un **site de base** (template de fondation) réutilisé pour démarrer chaque
-nouveau projet. Il fournit, prêts à l'emploi :
+**VTC** — application web (PWA) de gestion d'une activité taxi/VTC pour une
+équipe (un super-admin qui est aussi conducteur, et plusieurs conducteurs).
+Construite sur le template de fondation `SuperNon0/site` (thème RecipeLog + auth
+Cloudflare Zero Trust). Le cahier des charges métier fait foi ; l'implémentation
+métier est décrite dans [`docs/taxi-vtc.md`](docs/taxi-vtc.md).
+
+Le socle repris du template, à conserver :
 
 1. **Le thème visuel « RecipeLog »** (dark + accent doré) — voir
    [`docs/theme-recipelog.md`](docs/theme-recipelog.md), implémenté dans
@@ -14,10 +19,18 @@ nouveau projet. Il fournit, prêts à l'emploi :
 2. **L'authentification v2 multi-comptes** derrière **Cloudflare Zero Trust** —
    spec [`docs/authentification-v2.md`](docs/authentification-v2.md), maquettes de
    référence [`docs/maquettes-auth-v2/`](docs/maquettes-auth-v2/).
-3. **Les notifications via BotPanel** — [`docs/notifications-botpanel.md`](docs/notifications-botpanel.md),
-   helper [`panel/notify.py`](panel/notify.py).
+3. **Les notifications via BotPanel** (cycle de vie des comptes uniquement) —
+   [`docs/notifications-botpanel.md`](docs/notifications-botpanel.md),
+   helper [`panel/notify.py`](panel/notify.py). ⚠️ Les notifications **métier**
+   des conducteurs passent par **Web Push** (`panel/webpush.py`), indépendamment
+   de BotPanel (cahier §8).
 4. **Le déploiement Proxmox (LXC/VM) + Cloudflare** —
    [`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md).
+
+Ajouté par le projet VTC (voir [`docs/taxi-vtc.md`](docs/taxi-vtc.md)) :
+courses (créateur ≠ conducteur assigné), calendrier personnel, extraction IA
+configurable des infos client, grilles tarifaires, lieux fréquents, clients
+habitués, Web Push, PWA (manifest + service worker), export calendrier natif.
 
 ## 2. Règles de reproduction (NE PAS DÉVIER)
 
@@ -35,23 +48,29 @@ nouveau projet. Il fournit, prêts à l'emploi :
 - **Les notifications passent par BotPanel** (`panel/notify.py`), jamais en
   appelant Discord directement.
 
-## 3. Ce que TU personnalises pour un projet
+## 3. Décisions structurantes déjà prises (VTC)
 
-- **La marque** via `.env` : `BRAND_PREFIX`, `BRAND_SUFFIX`, `BRAND_BADGE`, et le
-  logo `panel/static/logo.svg` (garde le viewBox 44×44).
-- **Le contenu applicatif** : remplace `panel/templates/dashboard.html` et
-  `panel/routes/main.py` par les écrans de ton projet, en réutilisant les classes
-  du thème (`fl-card`, `fl-title-serif`, `.btn`, etc.).
-- **Le modèle de données métier** : ajoute tes tables. ⚠️ **Décision bloquante**
-  avant de coder du contenu multi-utilisateurs : bibliothèque **partagée** ou
-  **cloisonnée** par compte ? Voir `authentification-v2.md` §7. À **poser au
-  propriétaire du projet**.
+- **Marque** via `.env` : `BRAND_PREFIX=V`, `BRAND_SUFFIX=TC`, `BRAND_BADGE`.
+- **Cloisonnement (auth-v2 §7)** : les **courses** sont une table **partagée**
+  avec propriété par ligne. Chaque course distingue `createur_id` (qui l'a
+  saisie) et `conducteur_id` (à qui elle est confiée). Toute la logique
+  d'affichage/notif/stats se base sur le **conducteur assigné**, jamais sur le
+  créateur (cahier §5). Le créateur a une vue séparée « Mes courses ».
+- **Extensibilité prévue** (à ne PAS développer maintenant, mais gardée facile) :
+  - prix par distance (§6.3) → colonne `courses.distance_km` + `prix_source`
+    déjà en place ; ajouter un mode `'distance'` sans toucher au reste.
+  - statistiques (§6.7) → colonnes date/prix/statut/conducteur indexées ;
+    la vue `/mes-stats` est **unique** et réutilisée par le super-admin via
+    « voir en tant que » (ne pas créer d'écran stats séparé).
 
-## 4. Rôles (ce template)
+## 4. Rôles (VTC)
 
-Deux rôles seulement : `super_admin` (toi — gère tout, login local) et `membre`.
-Le rôle `admin` intermédiaire de la spec n'est **pas** activé ici (simplification
-assumée). Ne le réintroduis que si le propriétaire le demande explicitement.
+Deux rôles, conformes au template : `super_admin` et `membre` (= **conducteur**
+dans toute la logique métier). Le `super_admin` **est aussi conducteur** : il a
+son propre calendrier et ses stats, exactement comme un `membre`. N'importe quel
+conducteur (super-admin inclus) peut créer une course et l'assigner à n'importe
+qui — pas de rôle « dispatcher » séparé (cahier §3). Ne pas réintroduire le rôle
+`admin` intermédiaire.
 
 ## 5. Lancer en local
 
@@ -70,19 +89,28 @@ connecte-toi en local avec `SUPERADMIN_PASSWORD`.
 ```
 panel/
   __init__.py         app factory (blueprints, contexte, no-store)
-  config.py           config depuis .env
-  db.py               SQLite : schéma `comptes` + `audit`, amorce super-admin
+  config.py           config depuis .env (marque VTC)
+  db.py               SQLite : comptes + audit + app_settings + modèle métier
+                      (courses, clients, tarifs, lieux, push_subscriptions)
   auth.py             Cloudflare Access (JWT), session, décorateurs
-  notify.py           helper BotPanel notify(slug, **vars)
-  reset_admin.py      CLI de réinitialisation du mdp super-admin (python -m panel.reset_admin)
-  utils.py            format date FR
+  notify.py           helper BotPanel (cycle de vie des comptes UNIQUEMENT)
+  courses.py          accès données métier : courses/clients/tarifs/lieux
+  ai.py               extraction IA configurable (Gemini/Mistral/Groq via REST)
+  webpush.py          Web Push : clés VAPID, souscriptions, envoi
+  settings.py         réglages en base (Cloudflare, IA, VAPID…)
+  utils.py            format date FR + export calendrier (.ics / Google Agenda)
   routes/
-    auth_routes.py    gateway, login local, demande d'accès, mot de passe oublié, logout
-    accounts_routes.py gestion comptes + impersonation + Paramètres/mdp (spec §5/§6/§8)
-    main.py           écran applicatif (à remplacer)
-  templates/          base + écrans d'auth + parametres + oubli + dashboard
-  static/             style.css (thème), fonts.css, logo.svg
-docs/                 spec auth, thème, notifications, déploiement, maquettes
+    auth_routes.py    gateway, login local, demande d'accès, logout
+    accounts_routes.py gestion comptes + impersonation + Paramètres/mdp/Cloudflare
+    config_routes.py  Paramètres taxi : IA, grilles tarifaires, lieux ; clients
+    main.py           calendrier, création de course, mes courses, stats, push, ICS
+  templates/          base + auth + parametres + dashboard(calendrier) +
+                      nouvelle_course + mes_courses + mes_stats + clients +
+                      config_ia/tarifs/lieux
+  static/             style.css (thème + section taxi), fonts.css, logo.svg,
+                      manifest.json (PWA), sw.js (service worker + push)
+docs/                 spec auth, thème, notifications, déploiement, maquettes,
+                      taxi-vtc.md (features métier)
 deploy/               install_lxc.sh, site-base.service, update.sh
 run.py / wsgi.py      entrées dev / prod (gunicorn)
 ```

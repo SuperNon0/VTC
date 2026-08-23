@@ -1,7 +1,7 @@
 {
-  "name": "super-nono",
-  "short_name": "super-nono",
-  "description": "Hub central super-nono.cc",
+  "name": "VTC — Gestion des courses",
+  "short_name": "VTC",
+  "description": "Gestion d'activité taxi/VTC : courses, calendrier, notifications.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

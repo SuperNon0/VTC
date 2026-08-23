@@ -30,13 +30,13 @@ class Config:
     # Passe SESSION_COOKIE_SECURE=true dès que tu es derrière HTTPS (Cloudflare).
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", False)
 
-    # --- Identité / marque (template neutre : à personnaliser par projet) ---
-    BRAND_PREFIX = os.getenv("BRAND_PREFIX", "site")       # partie dorée du logo
-    BRAND_SUFFIX = os.getenv("BRAND_SUFFIX", "base")       # partie italique claire
-    BRAND_BADGE = os.getenv("BRAND_BADGE", "template · fondation")
+    # --- Identité / marque (projet taxi/VTC) ---
+    BRAND_PREFIX = os.getenv("BRAND_PREFIX", "V")          # partie dorée du logo
+    BRAND_SUFFIX = os.getenv("BRAND_SUFFIX", "TC")         # partie italique claire
+    BRAND_BADGE = os.getenv("BRAND_BADGE", "gestion des courses")
 
     # --- Base de données ---
-    DATABASE_PATH = os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "site-base.db"))
+    DATABASE_PATH = os.getenv("DATABASE_PATH", str(BASE_DIR / "data" / "vtc.db"))
 
     # --- Super-admin local (amorce au premier lancement) ---
     # Mot de passe du compte super-admin joignable en LAN (login par mot de passe).

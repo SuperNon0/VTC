@@ -25,20 +25,25 @@ def create_app(config_object: type = Config) -> Flask:
     # --- Blueprints ---
     from .routes.auth_routes import bp as auth_bp
     from .routes.accounts_routes import bp as accounts_bp
+    from .routes.config_routes import bp as config_bp
     from .routes.main import bp as main_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(accounts_bp)
+    app.register_blueprint(config_bp)
     app.register_blueprint(main_bp)
 
     # --- Contexte de template partagé (marque + bandeau impersonation) ---
     @app.context_processor
     def inject_globals():
-        from .auth import get_compte
+        from .auth import get_compte, is_super_admin
         impersonation = None
-        if session.get("impersonator_id"):
-            cible = get_compte(session.get("compte_id"))
-            if cible is not None:
-                impersonation = {"email": cible["email"]}
+        admin = False
+        if session.get("compte_id"):
+            admin = is_super_admin()
+            if session.get("impersonator_id"):
+                cible = get_compte(session.get("compte_id"))
+                if cible is not None:
+                    impersonation = {"email": cible["email"]}
         return {
             "brand": {
                 "prefix": app.config["BRAND_PREFIX"],
@@ -46,6 +51,7 @@ def create_app(config_object: type = Config) -> Flask:
                 "badge": app.config["BRAND_BADGE"],
             },
             "impersonation": impersonation,
+            "is_super_admin": admin,
         }
 
     # --- Toutes les routes /api/* en no-store (spec §8) ---

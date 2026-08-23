@@ -1,87 +1,353 @@
-"""Le hub (contenu métier) : dashboard + API d'édition (super-admin).
+"""Écrans métier taxi/VTC : calendrier du conducteur, création de course,
+courses créées, statistiques (stub) et endpoints associés.
 
-Bibliothèque partagée : une configuration commune éditable par le super-admin.
-Consultable par tout compte actif.
+Toute la logique d'affichage se base sur le **conducteur assigné** (cahier §5).
+Le compte super_admin est traité exactement comme un conducteur pour son propre
+calendrier et ses stats (cahier §3) ; la vue « mes stats » est unique et
+réutilisée par le super-admin via « voir en tant que » (impersonation, §6.7).
 """
 
 from __future__ import annotations
 
-import os
-import time
+from datetime import datetime
 
-from flask import (Blueprint, current_app, jsonify, render_template, request,
-                   send_from_directory)
+from flask import (Blueprint, Response, abort, flash, jsonify, redirect,
+                   render_template, request, url_for)
 
+from .. import courses as C
+from .. import webpush
+from ..ai import AIError, extract_course_info, is_configured as ai_configured
 from ..auth import current_compte, is_super_admin, login_required
-from ..db import audit
-from ..hub import get_hub, save_hub
+from ..utils import course_ics, fmt_dt, google_calendar_url
 
 bp = Blueprint("main", __name__)
 
 
-def _uploads_dir() -> str:
-    d = os.path.join(os.path.dirname(current_app.config["DATABASE_PATH"]), "uploads")
-    os.makedirs(d, exist_ok=True)
+def _course_view(row) -> dict:
+    """Enrichit une course pour l'affichage (labels + date formatée)."""
+    d = dict(row)
+    d["quand_fmt"] = fmt_dt(row["quand"])
+    d["statut_label"] = C.STATUT_LABELS.get(row["statut"], row["statut"])
     return d
 
 
-def _require_super_admin_json():
-    """Garde JSON pour les routes /api/* (401/403 au lieu d'une redirection)."""
-    c = current_compte()
-    if c is None or c["etat"] != "actif":
-        return jsonify(ok=False, error="non authentifié"), 401
-    if not is_super_admin():
-        return jsonify(ok=False, error="réservé au super-admin"), 403
-    return None
+def _grouper_par_jour(rows) -> list:
+    """Regroupe des courses (déjà triées par date) par journée."""
+    groupes: list[dict] = []
+    for row in rows:
+        ts = row["quand"] or 0
+        jour = datetime.fromtimestamp(ts).strftime("%Y-%m-%d") if ts else "—"
+        if not groupes or groupes[-1]["jour"] != jour:
+            label = fmt_dt(ts, with_time=False) if ts else "Sans date"
+            groupes.append({"jour": jour, "label": label, "courses": []})
+        groupes[-1]["courses"].append(_course_view(row))
+    return groupes
 
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Calendrier personnel (dashboard) — cahier §6.6
+# ─────────────────────────────────────────────────────────────────────────────
 @bp.route("/")
 @login_required
 def dashboard():
+    compte = current_compte()
+    rows = C.courses_assignees(compte["id"], a_venir=True)
     return render_template(
         "dashboard.html",
-        compte=current_compte(),
+        compte=compte,
         is_super_admin=is_super_admin(),
+        groupes=_grouper_par_jour(rows),
+        total=len(rows),
+        push_available=webpush.is_available(),
+        deja_abonne=webpush.compte_a_des_souscriptions(compte["id"]),
     )
 
 
-# ─── API du hub ───────────────────────────────────────────────────────────────
-@bp.get("/api/hub")
+# ─────────────────────────────────────────────────────────────────────────────
+# Création d'une course — cahier §6.1 / §6.2 / §6.3 / §6.5
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/nouvelle")
 @login_required
-def api_hub_get():
-    return jsonify(get_hub())
+def nouvelle_course():
+    compte = current_compte()
+    return render_template(
+        "nouvelle_course.html",
+        compte=compte,
+        is_super_admin=is_super_admin(),
+        conducteurs=C.conducteurs_actifs(),
+        lieux=C.liste_lieux(),
+        tarifs=C.liste_tarifs(),
+        ai_on=ai_configured(),
+    )
 
 
-@bp.put("/api/hub")
-def api_hub_put():
-    guard = _require_super_admin_json()
-    if guard:
-        return guard
-    cfg = request.get_json(silent=True)
-    if not cfg or not isinstance(cfg.get("categories"), list):
-        return jsonify(ok=False, error="config invalide"), 400
-    save_hub(cfg)
+@bp.post("/api/extract")
+@login_required
+def api_extract():
+    """Extraction IA des infos client depuis un message brut (cahier §6.1)."""
+    data = request.get_json(silent=True) or {}
+    try:
+        infos = extract_course_info(data.get("message", ""))
+    except AIError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    return jsonify(ok=True, infos=infos)
+
+
+@bp.post("/api/courses")
+@login_required
+def api_creer_course():
+    """Crée une course, l'assigne, et notifie le conducteur assigné (§6.5)."""
+    compte = current_compte()
+    f = request.form
+
+    # Conducteur assigné : obligatoire, doit être actif.
+    try:
+        conducteur_id = int(f.get("conducteur_id", ""))
+    except (TypeError, ValueError):
+        conducteur_id = 0
+    valides = {c["id"] for c in C.conducteurs_actifs()}
+    if conducteur_id not in valides:
+        flash("Choisis un conducteur assigné valide.", "error")
+        return redirect(url_for("main.nouvelle_course"))
+
+    # Date/heure : champ datetime-local → timestamp.
+    quand = _parse_datetime_local(f.get("quand", ""))
+    if quand is None:
+        flash("Renseigne une date et une heure valides.", "error")
+        return redirect(url_for("main.nouvelle_course"))
+
+    # Prix : soit une grille tarifaire, soit « Autre » (prix libre) — cahier §6.3.
+    prix, prix_source, tarif_id = _resoudre_prix(f)
+
+    data = {
+        "client_nom": (f.get("client_nom") or "").strip() or None,
+        "client_tel": (f.get("client_tel") or "").strip() or None,
+        "depart": (f.get("depart") or "").strip() or None,
+        "arrivee": (f.get("arrivee") or "").strip() or None,
+        "quand": quand,
+        "prix": prix,
+        "prix_source": prix_source,
+        "tarif_id": tarif_id,
+        "distance_km": None,  # réservé à l'évolution « prix par distance » (§6.3)
+        "statut": "a_faire",
+        "conducteur_id": conducteur_id,
+        "client_id": _int_or_none(f.get("client_id")),
+        "notes": (f.get("notes") or "").strip() or None,
+    }
+    C.creer_course(data, compte["id"])
+
+    # Notification push au conducteur assigné (jamais au créateur) — cahier §5/§6.5.
+    corps = _resume_course(data)
+    webpush.notifier_conducteur(
+        conducteur_id, "Nouvelle course assignée", corps,
+        url=url_for("main.dashboard"),
+    )
+    flash("Course créée et assignée ✓", "success")
+    return redirect(url_for("main.dashboard"))
+
+
+def _resume_course(data: dict) -> str:
+    quand = fmt_dt(data["quand"]) if data.get("quand") else ""
+    trajet = " → ".join(x for x in (data.get("depart"), data.get("arrivee")) if x)
+    parts = [p for p in (quand, trajet) if p]
+    return " · ".join(parts) or "Voir le détail dans ton calendrier."
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Courses que j'ai créées (vue créateur, distincte du calendrier) — cahier §5
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/mes-courses")
+@login_required
+def mes_courses():
+    compte = current_compte()
+    rows = [_course_view(r) for r in C.courses_creees(compte["id"])]
+    return render_template(
+        "mes_courses.html", compte=compte,
+        is_super_admin=is_super_admin(), courses=rows,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mes statistiques — vue unique réutilisée par l'impersonation (cahier §6.7)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/mes-stats")
+@login_required
+def mes_stats():
+    """Tableau de bord personnel du conducteur effectif.
+
+    Fonctionnalité **différée** (cahier §6.7) : on n'affiche qu'un aperçu à
+    partir des données déjà stockées (date, prix, statut, conducteur assigné),
+    volontairement requêtables par conducteur/période. Le super-admin consulte
+    les stats d'un conducteur via « voir en tant que » — aucune vue séparée.
+    """
+    compte = current_compte()
+    apercu = _apercu_stats(compte["id"])
+    return render_template(
+        "mes_stats.html", compte=compte,
+        is_super_admin=is_super_admin(), apercu=apercu,
+    )
+
+
+def _apercu_stats(conducteur_id: int) -> dict:
+    """Agrégat minimal du mois en cours (structure prête, détail à venir §6.7)."""
+    from ..db import get_db
+    now = datetime.now()
+    debut_mois = int(datetime(now.year, now.month, 1).timestamp())
+    row = get_db().execute(
+        "SELECT COUNT(*) AS n, "
+        "COALESCE(SUM(CASE WHEN statut = 'terminee' THEN prix END), 0) AS ca "
+        "FROM courses WHERE conducteur_id = ? AND quand >= ? AND statut != 'annulee'",
+        (conducteur_id, debut_mois),
+    ).fetchone()
+    return {"mois": now.strftime("%m/%Y"), "nb_courses": row["n"], "ca": row["ca"]}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Statut d'une course (le conducteur assigné avance son statut)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.post("/api/courses/<int:course_id>/statut")
+@login_required
+def api_statut(course_id: int):
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        return jsonify(ok=False, error="introuvable"), 404
+    # Seul le conducteur assigné (ou le créateur) peut changer le statut.
+    if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
+        return jsonify(ok=False, error="non autorisé"), 403
+    statut = (request.form.get("statut") or "").strip()
+    if not C.set_statut(course_id, statut):
+        return jsonify(ok=False, error="statut invalide"), 400
+    return jsonify(ok=True, statut=statut, label=C.STATUT_LABELS.get(statut))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clients — autocomplétion (cahier §6.4)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.get("/api/clients/search")
+@login_required
+def api_clients_search():
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 2:
+        return jsonify(clients=[])
+    out = []
+    for row in C.chercher_clients(q):
+        out.append({
+            "id": row["id"], "nom": row["nom"],
+            "telephone": row["telephone"] or "",
+            "adresses": C.client_adresses(row),
+        })
+    return jsonify(clients=out)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Export calendrier natif (cahier §6.6)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.get("/course/<int:course_id>/ics")
+@login_required
+def course_ics_download(course_id: int):
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
+        abort(403)
+    ics = course_ics(course)
+    return Response(
+        ics, mimetype="text/calendar",
+        headers={"Content-Disposition":
+                 f'attachment; filename="course-{course_id}.ics"'},
+    )
+
+
+@bp.get("/course/<int:course_id>/google")
+@login_required
+def course_google(course_id: int):
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
+        abort(403)
+    return redirect(google_calendar_url(course))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Web Push — abonnement des appareils (cahier §6.5 / §7)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.get("/api/push/key")
+@login_required
+def api_push_key():
+    return jsonify(key=webpush.public_key(), available=webpush.is_available())
+
+
+@bp.post("/api/push/subscribe")
+@login_required
+def api_push_subscribe():
+    compte = current_compte()
+    sub = request.get_json(silent=True) or {}
+    ok = webpush.enregistrer_souscription(
+        compte["id"], sub, request.headers.get("User-Agent"))
+    return (jsonify(ok=True) if ok
+            else (jsonify(ok=False, error="souscription invalide"), 400))
+
+
+@bp.post("/api/push/unsubscribe")
+@login_required
+def api_push_unsubscribe():
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+    if endpoint:
+        webpush.supprimer_souscription(endpoint)
     return jsonify(ok=True)
 
 
-@bp.post("/api/hub/upload")
-def api_hub_upload():
-    guard = _require_super_admin_json()
-    if guard:
-        return guard
-    f = request.files.get("file")
-    if not f or not (f.mimetype or "").startswith("image/"):
-        return jsonify(ok=False, error="image requise"), 400
-    ext = os.path.splitext(f.filename or "")[1].lower() or ".png"
-    if ext not in {".png", ".jpg", ".jpeg", ".webp", ".svg", ".gif"}:
-        ext = ".png"
-    name = f"{int(time.time() * 1000):x}{ext}"
-    f.save(os.path.join(_uploads_dir(), name))
-    return jsonify(ok=True, url="/uploads/" + name)
+# ─────────────────────────────────────────────────────────────────────────────
+# Service worker (servi à la racine pour un scope « / »)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.get("/sw.js")
+def service_worker():
+    from flask import current_app
+    resp = current_app.send_static_file("sw.js")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
-@bp.get("/uploads/<path:filename>")
-@login_required
-def uploaded_file(filename):
-    return send_from_directory(_uploads_dir(), filename)
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers privés
+# ─────────────────────────────────────────────────────────────────────────────
+def _int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_datetime_local(value: str):
+    """Convertit un champ <input type=datetime-local> en timestamp Unix."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return int(datetime.strptime(value, fmt).timestamp())
+        except ValueError:
+            continue
+    return None
+
+
+def _resoudre_prix(f):
+    """Retourne (prix, source, tarif_id) selon la grille ou le prix libre (§6.3)."""
+    choix = (f.get("tarif_choix") or "").strip()
+    if choix and choix != "autre":
+        tarif_id = _int_or_none(choix)
+        for t in C.liste_tarifs():
+            if t["id"] == tarif_id:
+                return float(t["prix"]), "grille", tarif_id
+    # « Autre » : prix libre.
+    prix_libre = (f.get("prix_libre") or "").strip().replace(",", ".")
+    try:
+        return (float(prix_libre) if prix_libre else None), "autre", None
+    except ValueError:
+        return None, "autre", None

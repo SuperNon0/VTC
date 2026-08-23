@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle course — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}nouvelle course{% endblock %}
+
+{% block content %}
+<main class="tx-main tx-form-wrap">
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">Nouvelle course</h2>
+
+  {# ── Extraction IA d'un message client (cahier §6.1) ─────────────────────── #}
+  <section class="fl-card" style="margin-bottom:1rem">
+    <label class="fl-label" for="ia-msg">Coller le message du client (extraction automatique)</label>
+    {% if ai_on %}
+    <textarea id="ia-msg" class="tx-input tx-area" rows="3"
+              placeholder="Ex : Bonjour c'est Marie, pouvez-vous me prendre à la gare du Grau-du-Roi pour aller à l'aéroport de Montpellier ? Mon numéro : 06 12 34 56 78"></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+      <button type="button" class="btn ghost small" id="ia-btn" onclick="extraireIA()">✨ Extraire les infos</button>
+    </div>
+    {% else %}
+    <p class="access-note" style="text-align:left;margin:.4rem 0 0">
+      L'extraction automatique n'est pas encore configurée.
+      {% if is_super_admin %}Règle-la dans <a href="{{ url_for('config.ia') }}">Paramètres → Extraction IA</a>.
+      {% else %}Le super-admin peut l'activer dans les paramètres.{% endif %}
+      Tu peux remplir le formulaire à la main ci-dessous.
+    </p>
+    {% endif %}
+  </section>
+
+  <form method="post" action="{{ url_for('main.api_creer_course') }}" class="fl-card tx-form">
+    <input type="hidden" name="client_id" id="client_id">
+
+    {# ── Client (avec autocomplétion des habitués, §6.4) ───────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="client_nom">Nom du client</label>
+      <div class="tx-ac">
+        <input class="tx-input" type="text" name="client_nom" id="client_nom"
+               autocomplete="off" placeholder="Nom du client"
+               oninput="rechercherClient(this.value)">
+        <div class="tx-ac-list" id="ac-list"></div>
+      </div>
+    </div>
+
+    <div class="tx-field">
+      <label class="fl-label" for="client_tel">Téléphone</label>
+      <input class="tx-input" type="tel" name="client_tel" id="client_tel"
+             placeholder="06 …">
+    </div>
+
+    {# ── Prise en charge + lieux fréquents (§6.2) ──────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="depart">Adresse de prise en charge</label>
+      <input class="tx-input" type="text" name="depart" id="depart"
+             placeholder="Adresse de départ">
+      {% if lieux %}
+      <div class="tx-chips">
+        {% for l in lieux %}
+        <button type="button" class="tx-chip" onclick="setLieu('depart', {{ l.adresse and (l.adresse|tojson) or (l.nom|tojson) }})">{{ l.nom }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Dépose + lieux fréquents ──────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="arrivee">Adresse de dépose</label>
+      <input class="tx-input" type="text" name="arrivee" id="arrivee"
+             placeholder="Adresse d'arrivée">
+      {% if lieux %}
+      <div class="tx-chips">
+        {% for l in lieux %}
+        <button type="button" class="tx-chip" onclick="setLieu('arrivee', {{ l.adresse and (l.adresse|tojson) or (l.nom|tojson) }})">{{ l.nom }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {# ── Date & heure ──────────────────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="quand">Date et heure</label>
+      <input class="tx-input" type="datetime-local" name="quand" id="quand" required>
+    </div>
+
+    {# ── Prix : grille tarifaire ou « Autre » (§6.3) ───────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="tarif_choix">Prix</label>
+      <select class="tx-input" name="tarif_choix" id="tarif_choix" onchange="onTarif()">
+        <option value="">— Choisir —</option>
+        {% for t in tarifs %}
+        <option value="{{ t.id }}">{{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €{% if t.concurrent %} (concurrents : {{ t.concurrent }}){% endif %}</option>
+        {% endfor %}
+        <option value="autre">Autre (prix libre)</option>
+      </select>
+      <input class="tx-input" type="text" inputmode="decimal" name="prix_libre" id="prix_libre"
+             placeholder="Prix en €" style="display:none;margin-top:.5rem">
+    </div>
+
+    {# ── Conducteur assigné (§6.5) ─────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="conducteur_id">Conducteur assigné</label>
+      <select class="tx-input" name="conducteur_id" id="conducteur_id" required>
+        <option value="">— Choisir le conducteur —</option>
+        {% for c in conducteurs %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id == compte['id'] else '' }}>
+          {{ c.email or 'super-admin' }}{% if c.id == compte['id'] %} (moi){% endif %}{% if c.role == 'super_admin' %} · admin{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {# ── Notes ─────────────────────────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="notes">Notes</label>
+      <textarea class="tx-input tx-area" name="notes" id="notes" rows="2"
+                placeholder="Infos complémentaires…"></textarea>
+    </div>
+
+    <div style="display:flex;gap:.8rem;justify-content:flex-end;margin-top:.4rem">
+      <a href="{{ url_for('main.dashboard') }}" class="btn ghost">Annuler</a>
+      <button type="submit" class="btn primary">Créer et assigner</button>
+    </div>
+  </form>
+</main>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toast(m, err) {
+  var t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.background = err ? 'var(--danger)' : 'var(--accent)';
+  t.style.color = err ? '#fff' : '#0e0f11';
+  t.classList.add('show');
+  setTimeout(function () { t.classList.remove('show'); }, 2600);
+}
+
+function setLieu(field, value) {
+  document.getElementById(field).value = value;
+}
+
+function onTarif() {
+  var sel = document.getElementById('tarif_choix').value;
+  document.getElementById('prix_libre').style.display = (sel === 'autre') ? 'block' : 'none';
+}
+
+// ── Extraction IA (cahier §6.1) ──────────────────────────────────────────────
+async function extraireIA() {
+  var msg = document.getElementById('ia-msg').value.trim();
+  if (!msg) { toast('Colle d\'abord le message du client.', true); return; }
+  var btn = document.getElementById('ia-btn');
+  btn.disabled = true; btn.textContent = '… extraction';
+  try {
+    var r = await fetch('/api/extract', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    var j = await r.json();
+    if (!r.ok || !j.ok) { toast(j.error || 'Extraction impossible.', true); return; }
+    var i = j.infos;
+    if (i.nom) document.getElementById('client_nom').value = i.nom;
+    if (i.telephone) document.getElementById('client_tel').value = i.telephone;
+    if (i.prise_en_charge) document.getElementById('depart').value = i.prise_en_charge;
+    if (i.depose) document.getElementById('arrivee').value = i.depose;
+    toast('Infos extraites ✓ — vérifie puis complète.');
+  } catch (e) {
+    toast('Erreur : ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '✨ Extraire les infos';
+  }
+}
+
+// ── Autocomplétion clients (cahier §6.4) ─────────────────────────────────────
+var acTimer = null, acClients = [];
+function rechercherClient(q) {
+  document.getElementById('client_id').value = '';  // saisie manuelle = pas de lien
+  clearTimeout(acTimer);
+  var list = document.getElementById('ac-list');
+  if (q.trim().length < 2) { list.innerHTML = ''; list.classList.remove('open'); return; }
+  acTimer = setTimeout(async function () {
+    try {
+      var r = await fetch('/api/clients/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      var j = await r.json();
+      acClients = j.clients || [];
+      if (!acClients.length) { list.innerHTML = ''; list.classList.remove('open'); return; }
+      list.innerHTML = acClients.map(function (c, idx) {
+        return '<div class="tx-ac-item" data-idx="' + idx + '">' +
+          '<b>' + esc(c.nom) + '</b>' + (c.telephone ? ' <span class="tx-muted">' + esc(c.telephone) + '</span>' : '') + '</div>';
+      }).join('');
+      list.classList.add('open');
+    } catch (e) { /* silencieux */ }
+  }, 220);
+}
+document.getElementById('ac-list').addEventListener('click', function (e) {
+  var item = e.target.closest('.tx-ac-item');
+  if (!item) return;
+  choisirClient(acClients[+item.dataset.idx]);
+});
+function choisirClient(c) {
+  if (!c) return;
+  document.getElementById('client_nom').value = c.nom || '';
+  document.getElementById('client_tel').value = c.telephone || '';
+  document.getElementById('client_id').value = c.id || '';
+  if (c.adresses && c.adresses.length) document.getElementById('depart').value = c.adresses[0];
+  var list = document.getElementById('ac-list');
+  list.innerHTML = ''; list.classList.remove('open');
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.tx-ac')) {
+    var list = document.getElementById('ac-list');
+    if (list) { list.innerHTML = ''; list.classList.remove('open'); }
+  }
+});
+</script>
+{% endblock %}
