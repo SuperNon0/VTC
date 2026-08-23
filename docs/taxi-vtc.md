@@ -68,6 +68,38 @@ push échoue (non installé, refusé), le calendrier reste la source fiable.
 - Bouton **Agenda** : détecte iOS → fichier `.ics` (`/course/<id>/ics`) ;
   sinon → lien **Google Agenda** pré-rempli (`/course/<id>/google`).
 
+### Modèle d'événement personnalisable (Paramètres → Modèle calendrier)
+
+Le **titre** et les **notes** de l'événement sont construits depuis deux modèles
+texte à **placeholders** entre crochets, modifiables par le **super-admin**
+(`/parametres/calendrier`, avec aperçu en direct). Implémentation :
+[`panel/utils.py`](../panel/utils.py) (`course_titre` / `course_description`,
+substitution `[clé] → valeur`), modèles stockés dans `app_settings`
+(`cal_title_template`, `cal_notes_template`) ; vide = valeur par défaut.
+
+Placeholders : `[nom]`, `[telephone]`, `[depart]`, `[arrivee]`, `[prix]`,
+`[date]`, `[statut]`, `[habitue]` (« Habitué » si la course est liée à un client
+enregistré, sinon « Nouveau client »), `[notes]`.
+
+Valeurs par défaut :
+
+- **Titre** : `[nom] · [depart] → [arrivee]`
+- **Notes** :
+  ```
+  Client : [nom] ([habitue])
+  Téléphone : [telephone]
+  Départ : [depart]
+  Arrivée : [arrivee]
+  Prix : [prix]
+  Date : [date]
+  Notes : [notes]
+  ```
+
+Pour modifier : ouvrir *Paramètres → Modèle calendrier*, cliquer un placeholder
+pour l'insérer (ou le taper à la main, ex. `Prix : [prix]`), vérifier l'aperçu,
+*Enregistrer*. *Réinitialiser* rétablit les valeurs par défaut. Un placeholder
+sans valeur pour une course donnée devient une chaîne vide.
+
 ## Statistiques (cahier §6.7 — différé)
 
 Vue **unique** `/mes-stats` (aperçu du mois : nb de courses + CA des courses

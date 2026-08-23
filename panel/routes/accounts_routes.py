@@ -92,7 +92,7 @@ def cloudflare_settings():
 @bp.route("/parametres/update", methods=["POST"])
 @super_admin_required
 def update_app():
-    """Met à jour le hub depuis GitHub (git pull + deps) puis recharge.
+    """Met à jour le site depuis GitHub (git pull + deps) puis recharge.
 
     Le service tourne sous l'utilisateur propriétaire du dépôt : il fait donc
     lui-même le pull et l'install (sans sudo), et remonte l'erreur exacte en cas
@@ -137,7 +137,7 @@ def update_app():
         except Exception:
             pass
     flash("Code mis à jour ✓ — redémarre le service pour l'appliquer "
-          "(systemctl restart site-base).", "success")
+          "(systemctl restart vtc).", "success")
     return redirect(url_for("accounts.parametres"))
 
 

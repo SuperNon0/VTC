@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# install.sh — Déploiement 1-commande du hub super-nono.cc dans un LXC Proxmox.
+# install.sh — Déploiement 1-commande du VTC dans un LXC Proxmox.
 # À LANCER SUR LE SHELL DU NODE PROXMOX.
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/SuperNon0/site/main/install.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/SuperNon0/VTC/main/install.sh)"
 #
 # Options : CTID=130 CT_STORAGE=local-zfs ADMIN_PASSWORD=... bash -c "$(curl ...)"
 #
 set -euo pipefail
 
-REPO_URL="https://github.com/SuperNon0/site.git"
+REPO_URL="https://github.com/SuperNon0/VTC.git"
 BRANCH="${BRANCH:-main}"
-INSTALL_DIR="/opt/site-base"
+INSTALL_DIR="/opt/vtc"
 
 CTID="${CTID:-}"
 HOSTNAME_CT="${HOSTNAME_CT:-hub}"
@@ -27,7 +27,7 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 # E-mail Google du super-admin (pour être reconnu via Cloudflare). Optionnel.
 ADMIN_EMAIL="${ADMIN_EMAIL:-}"
 # Marque affichée (logo = prefix doré + suffix italique) + badge.
-BRAND_PREFIX="${BRAND_PREFIX:-super}"; BRAND_SUFFIX="${BRAND_SUFFIX:--nono}"; BRAND_BADGE="${BRAND_BADGE:-hub}"
+BRAND_PREFIX="${BRAND_PREFIX:-V}"; BRAND_SUFFIX="${BRAND_SUFFIX:-TC}"; BRAND_BADGE="${BRAND_BADGE:-gestion des courses}"
 
 RED=$'\e[31m';GRN=$'\e[32m';YLW=$'\e[33m';BLU=$'\e[34m';BLD=$'\e[1m';RST=$'\e[0m'
 info(){ echo "${BLU}${BLD}[i]${RST} $*"; }
@@ -61,7 +61,7 @@ info "Création du conteneur LXC…"
 pct create "$CTID" "$TEMPLATE_FILE" \
   --hostname "$HOSTNAME_CT" --cores "$CORES" --memory "$RAM_MB" --swap "$RAM_MB" \
   --rootfs "${CT_STORAGE}:${DISK_GB}" --net0 "$NETCFG" --unprivileged 1 \
-  --password "$CT_PASSWORD" --onboot 1 --description "Hub super-nono.cc"
+  --password "$CT_PASSWORD" --onboot 1 --description "VTC"
 ok "Conteneur $CTID créé."
 pct start "$CTID"
 
@@ -77,7 +77,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq python3 python3-venv python3-pip git ca-certificates sudo >/dev/null
-id sitebase >/dev/null 2>&1 || useradd --system --shell /usr/sbin/nologin --home ${INSTALL_DIR} sitebase
+id vtc >/dev/null 2>&1 || useradd --system --shell /usr/sbin/nologin --home ${INSTALL_DIR} vtc
 git clone --depth 1 --branch "$BRANCH" "$REPO_URL" ${INSTALL_DIR} >/dev/null 2>&1
 mkdir -p ${INSTALL_DIR}/data
 python3 -m venv ${INSTALL_DIR}/.venv
@@ -91,7 +91,7 @@ SESSION_COOKIE_SECURE=false
 BRAND_PREFIX=${BRAND_PREFIX}
 BRAND_SUFFIX=${BRAND_SUFFIX}
 BRAND_BADGE=${BRAND_BADGE}
-DATABASE_PATH=${INSTALL_DIR}/data/site-base.db
+DATABASE_PATH=${INSTALL_DIR}/data/vtc.db
 SUPERADMIN_PASSWORD=${ADMIN_PASSWORD}
 SUPERADMIN_EMAIL=${ADMIN_EMAIL}
 CF_VERIFY_JWT=false
@@ -101,23 +101,23 @@ ENV
 chmod 640 ${INSTALL_DIR}/.env
 
 # service systemd (bind 0.0.0.0 pour l'accès LAN / reverse proxy)
-sed 's|127.0.0.1:8000|0.0.0.0:${HUB_PORT}|' ${INSTALL_DIR}/deploy/site-base.service > /etc/systemd/system/site-base.service
-chown -R sitebase:sitebase ${INSTALL_DIR}
+sed 's|127.0.0.1:8000|0.0.0.0:${HUB_PORT}|' ${INSTALL_DIR}/deploy/vtc.service > /etc/systemd/system/vtc.service
+chown -R vtc:vtc ${INSTALL_DIR}
 systemctl daemon-reload
-systemctl enable --now site-base >/dev/null 2>&1
+systemctl enable --now vtc >/dev/null 2>&1
 
-# Helper de mise à jour depuis l'UI (lancé en root via sudo par l'app sitebase)
-cat > /usr/local/bin/site-base-update <<'UPD'
+# Helper de mise à jour depuis l'UI (lancé en root via sudo par l'app vtc)
+cat > /usr/local/bin/vtc-update <<'UPD'
 #!/usr/bin/env bash
 set -e
-cd /opt/site-base
-sudo -u sitebase git pull --ff-only
-sudo -u sitebase /opt/site-base/.venv/bin/pip install -q -r requirements.txt
-systemd-run --no-block --on-active=2 --collect systemctl restart site-base
+cd /opt/vtc
+sudo -u vtc git pull --ff-only
+sudo -u vtc /opt/vtc/.venv/bin/pip install -q -r requirements.txt
+systemd-run --no-block --on-active=2 --collect systemctl restart vtc
 UPD
-chmod 755 /usr/local/bin/site-base-update
-echo 'sitebase ALL=(root) NOPASSWD: /usr/local/bin/site-base-update' > /etc/sudoers.d/site-base-update
-chmod 440 /etc/sudoers.d/site-base-update
+chmod 755 /usr/local/bin/vtc-update
+echo 'vtc ALL=(root) NOPASSWD: /usr/local/bin/vtc-update' > /etc/sudoers.d/vtc-update
+chmod 440 /etc/sudoers.d/vtc-update
 INNER
 )"
 pct exec "$CTID" -- bash -c "$INNER"
@@ -125,7 +125,7 @@ ok "Hub installé et démarré."
 
 echo
 echo "${GRN}${BLD}══════════════════════════════════════════════════════════════${RST}"
-echo "${GRN}${BLD}  Hub super-nono.cc prêt ! 🎉${RST}"
+echo "${GRN}${BLD}  VTC prêt ! 🎉${RST}"
 echo "${GRN}${BLD}══════════════════════════════════════════════════════════════${RST}"
 echo
 echo "  ${BLD}Accès web${RST}       : ${BLU}http://${CT_IP_ADDR}:${HUB_PORT}${RST}"
@@ -133,7 +133,7 @@ echo "  ${BLD}Conteneur LXC${RST}   : CTID ${CTID}  (hostname : ${HOSTNAME_CT})"
 echo "  ${BLD}Login SSH/console${RST}: root${GEN_ROOT:+  /  mot de passe : ${YLW}${CT_PASSWORD}${RST}}"
 echo "  ${BLD}Mot de passe SUPER-ADMIN${RST} (login local du hub) : ${YLW}${ADMIN_PASSWORD}${RST}"
 echo
-echo "  Pointe ton reverse proxy (super-nono.cc) vers ${CT_IP_ADDR}:${HUB_PORT}."
+echo "  Pointe ton reverse proxy (ton-domaine.cc) vers ${CT_IP_ADDR}:${HUB_PORT}."
 echo "  Cloudflare Zero Trust : renseigne CF_ACCESS_TEAM_DOMAIN + CF_ACCESS_AUD"
 echo "  dans ${INSTALL_DIR}/.env et passe CF_VERIFY_JWT=true (voir docs/deploiement-proxmox.md)."
 echo "  Mise à jour : pct enter ${CTID}  puis  bash ${INSTALL_DIR}/deploy/update.sh"

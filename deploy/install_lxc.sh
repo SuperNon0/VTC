@@ -5,14 +5,14 @@
 #
 # À exécuter DANS le conteneur, en root :
 #   # avec un dépôt distant :
-#   curl -fsSL https://raw.githubusercontent.com/<user>/site-base/main/deploy/install_lxc.sh | bash -s -- https://github.com/<user>/site-base.git
-#   # ou en local après avoir copié le repo dans /opt/site-base :
+#   curl -fsSL https://raw.githubusercontent.com/SuperNon0/VTC/main/deploy/install_lxc.sh | bash -s -- https://github.com/SuperNon0/VTC.git
+#   # ou en local après avoir copié le repo dans /opt/vtc :
 #   sudo bash deploy/install_lxc.sh
 #
 set -euo pipefail
 
-INSTALL_DIR="/opt/site-base"
-SERVICE_USER="sitebase"
+INSTALL_DIR="/opt/vtc"
+SERVICE_USER="vtc"
 REPO_URL="${1:-}"
 
 echo ">>> [1/6] Dépendances système"
@@ -53,13 +53,13 @@ chown -R "${SERVICE_USER}:${SERVICE_USER}" "${INSTALL_DIR}"
 chmod 640 "${INSTALL_DIR}/.env"
 
 echo ">>> [6/6] systemd"
-cp "${INSTALL_DIR}/deploy/site-base.service" /etc/systemd/system/site-base.service
+cp "${INSTALL_DIR}/deploy/vtc.service" /etc/systemd/system/vtc.service
 systemctl daemon-reload
-systemctl enable site-base.service
+systemctl enable vtc.service
 
 echo ""
 echo "Installation terminée."
 echo "  1. Éditer ${INSTALL_DIR}/.env"
-echo "  2. systemctl start site-base"
-echo "  3. journalctl -u site-base -f   (pour suivre les logs)"
+echo "  2. systemctl start vtc"
+echo "  3. journalctl -u vtc -f   (pour suivre les logs)"
 echo "  4. Exposer via Cloudflare Tunnel (voir docs/deploiement-proxmox.md)"

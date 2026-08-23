@@ -21,6 +21,8 @@ from ..auth import (get_compte, is_super_admin, login_required,
                     super_admin_required)
 from ..db import audit
 from ..settings import set_setting
+from ..utils import (CAL_PLACEHOLDERS, DEFAULT_CAL_NOTES, DEFAULT_CAL_TITLE,
+                     cal_notes_template, cal_title_template)
 
 bp = Blueprint("config", __name__)
 
@@ -71,6 +73,45 @@ def ia_save():
     audit("config_ia", _acteur(), detail=f"provider={provider} model={model}")
     flash("Réglages d'extraction IA enregistrés.", "success")
     return redirect(url_for("config.ia"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Modèle d'export calendrier (cahier §6.6) — super-admin uniquement
+# Titre + notes de l'événement, personnalisables avec des [placeholders].
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/parametres/calendrier")
+@super_admin_required
+def calendrier():
+    return render_template(
+        "config_calendrier.html",
+        titre=cal_title_template(),
+        notes=cal_notes_template(),
+        default_titre=DEFAULT_CAL_TITLE,
+        default_notes=DEFAULT_CAL_NOTES,
+        placeholders=CAL_PLACEHOLDERS,
+        impersonating=bool(session.get("impersonator_id")),
+    )
+
+
+@bp.route("/parametres/calendrier", methods=["POST"])
+@super_admin_required
+def calendrier_save():
+    if session.get("impersonator_id"):
+        flash("Reviens à ton compte pour modifier ces réglages.", "error")
+        return redirect(url_for("config.calendrier"))
+    # Si on réinitialise, on efface les réglages → les valeurs par défaut reviennent.
+    if request.form.get("reset"):
+        set_setting("cal_title_template", "")
+        set_setting("cal_notes_template", "")
+        flash("Modèle de calendrier réinitialisé aux valeurs par défaut.", "info")
+        return redirect(url_for("config.calendrier"))
+    titre = (request.form.get("titre") or "").strip()
+    notes = (request.form.get("notes") or "").rstrip()
+    set_setting("cal_title_template", titre)
+    set_setting("cal_notes_template", notes)
+    audit("config_calendrier", _acteur())
+    flash("Modèle d'export calendrier enregistré ✓", "success")
+    return redirect(url_for("config.calendrier"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

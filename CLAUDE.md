@@ -102,11 +102,11 @@ panel/
   routes/
     auth_routes.py    gateway, login local, demande d'accès, logout
     accounts_routes.py gestion comptes + impersonation + Paramètres/mdp/Cloudflare
-    config_routes.py  Paramètres taxi : IA, grilles tarifaires, lieux ; clients
+    config_routes.py  Paramètres taxi : IA, tarifs, lieux, modèle calendrier ; clients
     main.py           calendrier, création de course, mes courses, stats, push, ICS
   templates/          base + auth + parametres + dashboard(calendrier) +
                       nouvelle_course + mes_courses + mes_stats + clients +
-                      config_ia/tarifs/lieux
+                      config_ia/tarifs/lieux/calendrier
   static/             style.css (thème + section taxi), fonts.css, logo.svg,
                       manifest.json (PWA), sw.js (service worker + push)
 docs/                 spec auth, thème, notifications, déploiement, maquettes,

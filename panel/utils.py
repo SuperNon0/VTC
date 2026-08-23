@@ -21,32 +21,91 @@ def fmt_dt(ts: int | None, with_time: bool = True) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Export vers le calendrier natif (cahier §6.6)
+# Export vers le calendrier natif (cahier §6.6) — modèles personnalisables
+#
+# Le titre et les notes de l'événement calendrier sont construits à partir de
+# deux modèles texte contenant des **placeholders** entre crochets, ex :
+# « Prix : [prix] ». Ces modèles sont modifiables dans les Paramètres
+# (super-admin uniquement) ; à défaut, les valeurs par défaut ci-dessous
+# s'appliquent.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Placeholders disponibles → description affichée dans l'aide des Paramètres.
+CAL_PLACEHOLDERS = {
+    "nom": "Nom du client",
+    "telephone": "Numéro de téléphone",
+    "depart": "Lieu de prise en charge",
+    "arrivee": "Lieu de dépose",
+    "prix": "Prix (ex : 15.00 €)",
+    "date": "Date et heure",
+    "statut": "Statut de la course",
+    "habitue": "« Habitué » ou « Nouveau client »",
+    "notes": "Notes libres de la course",
+}
+
+# Modèle par défaut du TITRE de l'événement (ce qui s'affiche en gros).
+DEFAULT_CAL_TITLE = "[nom] · [depart] → [arrivee]"
+
+# Modèle par défaut des NOTES de l'événement (toutes les infos).
+DEFAULT_CAL_NOTES = (
+    "Client : [nom] ([habitue])\n"
+    "Téléphone : [telephone]\n"
+    "Départ : [depart]\n"
+    "Arrivée : [arrivee]\n"
+    "Prix : [prix]\n"
+    "Date : [date]\n"
+    "Notes : [notes]"
+)
+
+
 def _utc_stamp(ts: int) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def _cal_values(course) -> dict:
+    """Valeurs concrètes des placeholders pour une course donnée."""
+    from .courses import STATUT_LABELS  # import tardif : évite tout couplage
+    prix = f"{course['prix']:.2f} €" if course["prix"] is not None else ""
+    return {
+        "nom": (course["client_nom"] or "").strip(),
+        "telephone": (course["client_tel"] or "").strip(),
+        "depart": (course["depart"] or "").strip(),
+        "arrivee": (course["arrivee"] or "").strip(),
+        "prix": prix,
+        "date": fmt_dt(course["quand"]),
+        "statut": STATUT_LABELS.get(course["statut"], course["statut"] or ""),
+        "habitue": "Habitué" if course["client_id"] else "Nouveau client",
+        "notes": (course["notes"] or "").strip(),
+    }
+
+
+def _render_template(tpl: str, values: dict) -> str:
+    """Remplace chaque [placeholder] par sa valeur (chaîne vide si inconnue)."""
+    out = tpl or ""
+    for key, val in values.items():
+        out = out.replace(f"[{key}]", val)
+    return out
+
+
+def cal_title_template() -> str:
+    from .settings import get_setting
+    t = get_setting("cal_title_template")
+    return t if t else DEFAULT_CAL_TITLE
+
+
+def cal_notes_template() -> str:
+    from .settings import get_setting
+    t = get_setting("cal_notes_template")
+    return t if t else DEFAULT_CAL_NOTES
+
+
 def course_titre(course) -> str:
-    nom = (course["client_nom"] or "Client").strip()
-    return f"Course taxi — {nom}"
+    titre = _render_template(cal_title_template(), _cal_values(course)).strip()
+    return titre or "Course taxi"
 
 
 def course_description(course) -> str:
-    lignes = []
-    if course["client_nom"]:
-        lignes.append(f"Client : {course['client_nom']}")
-    if course["client_tel"]:
-        lignes.append(f"Téléphone : {course['client_tel']}")
-    if course["depart"]:
-        lignes.append(f"Prise en charge : {course['depart']}")
-    if course["arrivee"]:
-        lignes.append(f"Dépose : {course['arrivee']}")
-    if course["prix"] is not None:
-        lignes.append(f"Prix : {course['prix']:.2f} €")
-    if course["notes"]:
-        lignes.append(f"Notes : {course['notes']}")
-    return "\n".join(lignes)
+    return _render_template(cal_notes_template(), _cal_values(course)).strip()
 
 
 def google_calendar_url(course, duree_min: int = 60) -> str:
