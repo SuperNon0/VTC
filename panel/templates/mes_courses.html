@@ -16,7 +16,7 @@
   {% endif %}
 
   {% for c in courses %}
-  <article class="tx-course">
+  <a class="tx-course tx-course-link" href="{{ url_for('main.course_detail', course_id=c.id) }}">
     <div class="tx-course-top">
       <span class="tx-time">{{ c.quand_fmt }}</span>
       <span class="tx-statut tx-st-{{ c.statut }}">{{ c.statut_label }}</span>
@@ -31,10 +31,10 @@
       <span class="tx-pt">{{ c.arrivee or '—' }}</span>
     </div>
     <div class="tx-course-foot">
-      {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% endif %}
+      {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% else %}<span></span>{% endif %}
       <span class="fl-tag">Assignée à : {{ c.conducteur_email or 'moi' }}</span>
     </div>
-  </article>
+  </a>
   {% endfor %}
 </main>
 {% endblock %}

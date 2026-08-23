@@ -1,12 +1,12 @@
 # Tuto — Login unique (SSO) avec Cloudflare Zero Trust
 
 > Objectif : **une seule connexion** (Google) qui ouvre **tous** tes sous-domaines
-> `*.super-nono.cc` (le hub + fuel, recipe, botpanel…), et le hub qui reconnaît
+> `*.ton-domaine.cc` (le hub + fuel, recipe, botpanel…), et le hub qui reconnaît
 > automatiquement qui est connecté.
 
 ## 0. Pré-requis
 
-- Le domaine `super-nono.cc` est géré par **Cloudflare**.
+- Le domaine `ton-domaine.cc` est géré par **Cloudflare**.
 - Ton **tunnel `cloudflared`** route déjà tes sous-domaines vers tes conteneurs.
 - Tu as accès à **Cloudflare Zero Trust** : <https://one.dash.cloudflare.com>
   (si c'est la 1ʳᵉ fois, choisis un **team name** → ça donne `TONÉQUIPE.cloudflareaccess.com`).
@@ -28,11 +28,11 @@ Zero Trust → **Settings → Authentication → Login methods → Add new**.
 
 Zero Trust → **Access → Applications → Add an application → Self-hosted**.
 
-- **Application name** : `super-nono`
+- **Application name** : `ton-domaine`
 - **Session duration** : `24h` (ou plus).
 - **Application domain** — ajoute **deux entrées** :
-  - `super-nono.cc`
-  - `*.super-nono.cc`  ← le wildcard couvre `fuel.`, `recipe.`, etc. d'un coup
+  - `ton-domaine.cc`
+  - `*.ton-domaine.cc`  ← le wildcard couvre `fuel.`, `recipe.`, etc. d'un coup
 - **Identity providers** : coche **Google** (et/ou One-time PIN).
 - **Next**.
 
@@ -65,14 +65,14 @@ Ouvre le hub → **Paramètres → Cloudflare / Accès** :
 
 > Astuce : que ton compte Google soit reconnu **direct comme super-admin**,
 > déploie le hub avec ton e-mail (`ADMIN_EMAIL=toi@gmail.com bash -c "$(curl …)"`),
-> ou mets `SUPERADMIN_EMAIL=` dans `/opt/site-base/.env` puis
-> `systemctl restart site-base`.
+> ou mets `SUPERADMIN_EMAIL=` dans `/opt/vtc/.env` puis
+> `systemctl restart vtc`.
 
 ## 6. Tester
 
-1. Ouvre `https://super-nono.cc` en navigation privée → tu es **redirigé vers le
+1. Ouvre `https://ton-domaine.cc` en navigation privée → tu es **redirigé vers le
    login Cloudflare** → connexion Google → tu arrives sur le hub.
-2. Ouvre `https://fuel.super-nono.cc` → **déjà connecté** (SSO). 🎉
+2. Ouvre `https://fuel.ton-domaine.cc` → **déjà connecté** (SSO). 🎉
 
 ## 7. Ajouter un membre
 
@@ -89,5 +89,5 @@ Comme le hub/les apps restent joignables en LAN par IP, pense à :
 
 ---
 
-**Résumé** : Google comme login → 1 app Access sur `*.super-nono.cc` → 1 policy
+**Résumé** : Google comme login → 1 app Access sur `*.ton-domaine.cc` → 1 policy
 avec les e-mails → équipe + AUD dans les Paramètres du hub → un seul login pour tout.

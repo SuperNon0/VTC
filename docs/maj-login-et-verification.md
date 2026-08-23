@@ -1,6 +1,6 @@
 # Mise à jour du système de login + vérification (à lire par le dev)
 
-> À transmettre au développeur qui maintient une version de `site-base` avec du
+> À transmettre au développeur qui maintient une version de `vtc` avec du
 > contenu déjà en place. Ce document décrit **le système de login tel qu'il est
 > maintenant**, **ce qui a changé** (donc à ne plus faire), **comment garder ton
 > contenu**, et **comment vérifier** que la connexion Cloudflare fonctionne.
@@ -34,8 +34,8 @@ Cycle d'un compte : `pending → actif / refused / bloque`.
      le JWT ». Stocké en base (table `app_settings`), **prioritaire** sur le `.env`.
    - Le code lit la config via `panel/settings.py → cf_config()`.
 
-2. **Le champ « Équipe » = le NOM d'équipe seul** (ex. `super-nono`), **pas** le
-   domaine complet. Mettre `super-nono.cloudflareaccess.com` provoquait un doublon
+2. **Le champ « Équipe » = le NOM d'équipe seul** (ex. `ton-domaine`), **pas** le
+   domaine complet. Mettre `ton-domaine.cloudflareaccess.com` provoquait un doublon
    `…cloudflareaccess.com.cloudflareaccess.com` → échec SSL de récupération des
    clés. Le code **normalise** désormais (retire `https://`, un `.cloudflareaccess.com`
    final, les `/`), mais garde l'habitude du **nom seul**.

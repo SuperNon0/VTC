@@ -1,7 +1,8 @@
 # Guide de déploiement — Proxmox + Cloudflare Zero Trust
 
-Ce guide explique comment héberger le site de base dans **ton infrastructure
-Proxmox**, derrière **Cloudflare Zero Trust**, avec les **notifications BotPanel**.
+Ce guide explique comment héberger l'application **VTC** dans **ton
+infrastructure Proxmox**, derrière **Cloudflare Zero Trust**, avec les
+**notifications BotPanel** (cycle de vie des comptes).
 
 > **Ordre de priorité pour l'hébergement (à décider avec le développeur) :**
 > 1. **LXC** (conteneur léger) — recommandé par défaut, faible empreinte.
@@ -26,9 +27,9 @@ Proxmox**, derrière **Cloudflare Zero Trust**, avec les **notifications BotPane
                    │  tunnel chiffré (cloudflared), aucune ouverture de port
                    ▼
    ┌───────────────────────────────┐   Proxmox (ton hyperviseur)
-   │  LXC « site-base »            │
+   │  LXC « vtc »                  │
    │   gunicorn 127.0.0.1:8000     │◀── cloudflared (même conteneur)
-   │   systemd: site-base.service  │
+   │   systemd: vtc.service        │
    └───────────────┬───────────────┘
                    │  POST /api/notify
                    ▼
@@ -55,7 +56,7 @@ pveam download local debian-12-standard_12.7-1_amd64.tar.zst
 
 # Créer le conteneur (adapte VMID, storage, bridge, IP)
 pct create 120 local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst \
-  --hostname site-base \
+  --hostname vtc \
   --cores 1 --memory 512 --swap 512 \
   --rootfs local-lvm:4 \
   --net0 name=eth0,bridge=vmbr0,ip=dhcp \
@@ -83,20 +84,20 @@ Dans le conteneur (ou la VM), en root :
 
 ```bash
 # Depuis ton dépôt Git
-curl -fsSL https://raw.githubusercontent.com/<user>/site-base/main/deploy/install_lxc.sh \
-  | bash -s -- https://github.com/<user>/site-base.git
+curl -fsSL https://raw.githubusercontent.com/SuperNon0/VTC/main/deploy/install_lxc.sh \
+  | bash -s -- https://github.com/SuperNon0/VTC.git
 ```
 
 Le script (`deploy/install_lxc.sh`) :
 - installe Python + venv + dépendances,
-- crée l'utilisateur système `sitebase`,
+- crée l'utilisateur système `vtc`,
 - copie `.env.example` → `.env` en générant une `SECRET_KEY` aléatoire,
-- installe et active le service systemd `site-base.service`.
+- installe et active le service systemd `vtc.service`.
 
 Puis édite la config :
 
 ```bash
-nano /opt/site-base/.env
+nano /opt/vtc/.env
 ```
 
 À renseigner au minimum :
@@ -115,8 +116,8 @@ BOTPANEL_URL=http://192.168.1.20:8080   # ton BotPanel
 Démarre :
 
 ```bash
-systemctl start site-base
-journalctl -u site-base -f
+systemctl start vtc
+journalctl -u vtc -f
 ```
 
 Le site écoute en local sur `127.0.0.1:8000` (jamais exposé directement).
@@ -130,12 +131,12 @@ Cloudflare**. C'est aussi ce qui garantit que l'origine est **injoignable sans
 Cloudflare** (protection clé, cf. `authentification-v2.md` §9.1).
 
 ```bash
-# Dans le conteneur site-base
+# Dans le conteneur vtc
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
 dpkg -i cloudflared.deb
 
 cloudflared tunnel login                       # ouvre un lien à valider
-cloudflared tunnel create site-base            # note l'UUID généré
+cloudflared tunnel create vtc            # note l'UUID généré
 ```
 
 Crée `/etc/cloudflared/config.yml` :
@@ -153,7 +154,7 @@ ingress:
 Route le DNS puis installe le service :
 
 ```bash
-cloudflared tunnel route dns site-base monsite.exemple.com
+cloudflared tunnel route dns vtc monsite.exemple.com
 cloudflared service install
 systemctl enable --now cloudflared
 ```
@@ -182,7 +183,7 @@ Dans le dashboard **Zero Trust → Access → Applications** :
 Redémarre le site après avoir renseigné ces deux valeurs :
 
 ```bash
-systemctl restart site-base
+systemctl restart vtc
 ```
 
 ### Comment ça marche ensuite
@@ -203,7 +204,7 @@ systemctl restart site-base
 ## 5. BotPanel (notifications)
 
 Le site poste sur `{BOTPANEL_URL}/api/notify`. Assure-toi que le conteneur
-`site-base` atteint BotPanel sur ton LAN (même bridge / route). Crée les trois
+`vtc` atteint BotPanel sur ton LAN (même bridge / route). Crée les trois
 notifications (`acces_demande`, `acces_valide`, `acces_bloque`) dans BotPanel —
 voir [`notifications-botpanel.md`](notifications-botpanel.md).
 
@@ -221,10 +222,10 @@ curl -X POST "$BOTPANEL_URL/api/notify" \
 
 | Action | Commande |
 |---|---|
-| Logs en direct | `journalctl -u site-base -f` |
-| Redémarrer | `systemctl restart site-base` |
-| Mettre à jour | `sudo bash /opt/site-base/deploy/update.sh` |
-| Sauvegarde | copier `/opt/site-base/data/site-base.db` (+ `.env`) |
+| Logs en direct | `journalctl -u vtc -f` |
+| Redémarrer | `systemctl restart vtc` |
+| Mettre à jour | `sudo bash /opt/vtc/deploy/update.sh` |
+| Sauvegarde | copier `/opt/vtc/data/vtc.db` (+ `.env`) |
 | Snapshot Proxmox | `pct snapshot 120 avant-maj` (ou l'UI) |
 
 ### Changer / réinitialiser le mot de passe admin
@@ -234,8 +235,8 @@ curl -X POST "$BOTPANEL_URL/api/notify" \
 - **Mot de passe oublié** (sur le serveur, sans être connecté) :
 
   ```bash
-  sudo bash /opt/site-base/deploy/reset_admin.sh            # saisie masquée
-  sudo bash /opt/site-base/deploy/reset_admin.sh "Nouveau!" # non interactif
+  sudo bash /opt/vtc/deploy/reset_admin.sh            # saisie masquée
+  sudo bash /opt/vtc/deploy/reset_admin.sh "Nouveau!" # non interactif
   ```
 
 Le super-admin reste toujours joignable **en LAN par mot de passe**. Le
@@ -247,7 +248,7 @@ pour éviter de se verrouiller dehors.
 ## 7. Checklist de déploiement
 
 - [ ] Conteneur LXC (ou VM) créé, à jour.
-- [ ] `install_lxc.sh` exécuté, service `site-base` actif.
+- [ ] `install_lxc.sh` exécuté, service `vtc` actif.
 - [ ] `.env` rempli : `SECRET_KEY`, `SUPERADMIN_*`, `CF_ACCESS_*`, `BOTPANEL_URL`.
 - [ ] `SESSION_COOKIE_SECURE=true` et `CF_VERIFY_JWT=true` en production.
 - [ ] Tunnel `cloudflared` actif, DNS routé, origine injoignable sans Cloudflare.

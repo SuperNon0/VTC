@@ -64,9 +64,13 @@ push échoue (non installé, refusé), le calendrier reste la source fiable.
 ## Calendrier & export natif (cahier §6.6)
 
 - Dashboard = calendrier personnel du conducteur (courses assignées à venir,
-  groupées par jour), avec changement de statut inline.
-- Bouton **Agenda** : détecte iOS → fichier `.ics` (`/course/<id>/ics`) ;
-  sinon → lien **Google Agenda** pré-rempli (`/course/<id>/google`).
+  groupées par jour). Chaque événement est **cliquable** → page de détail.
+- **Page détail** (`/course/<id>`) : toutes les infos (client, habitué/nouveau,
+  téléphone, départ, arrivée, prix, conducteur, créateur, notes). Le **statut se
+  met à jour ici, dans l'app** (boutons → `POST /api/courses/<id>/statut`) — pas
+  depuis l'événement figé exporté vers le calendrier natif du téléphone.
+- Bouton **Ajouter à mon agenda** : détecte iOS → fichier `.ics`
+  (`/course/<id>/ics`) ; sinon → lien **Google Agenda** (`/course/<id>/google`).
 
 ### Modèle d'événement personnalisable (Paramètres → Modèle calendrier)
 

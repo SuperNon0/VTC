@@ -64,6 +64,39 @@ def dashboard():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Détail d'une course (page ouverte au clic sur un événement du calendrier)
+# Affiche toutes les infos ; le statut se met à jour ICI (dans l'app), pas
+# depuis l'événement figé exporté vers le calendrier natif iPhone/Android.
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/course/<int:course_id>")
+@login_required
+def course_detail(course_id: int):
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
+        abort(403)
+    from ..db import get_db
+    db = get_db()
+    cond = db.execute("SELECT email FROM comptes WHERE id = ?",
+                      (course["conducteur_id"],)).fetchone()
+    crea = db.execute("SELECT email FROM comptes WHERE id = ?",
+                      (course["createur_id"],)).fetchone()
+    return render_template(
+        "course_detail.html",
+        compte=compte,
+        is_super_admin=is_super_admin(),
+        c=_course_view(course),
+        statuts=[(code, C.STATUT_LABELS[code]) for code in C.STATUTS],
+        habitue=bool(course["client_id"]),
+        conducteur_email=(cond["email"] if cond else None),
+        createur_email=(crea["email"] if crea else None),
+        est_conducteur=(compte["id"] == course["conducteur_id"]),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Création d'une course — cahier §6.1 / §6.2 / §6.3 / §6.5
 # ─────────────────────────────────────────────────────────────────────────────
 @bp.route("/nouvelle")

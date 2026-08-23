@@ -820,3 +820,43 @@ code {
   z-index: 600;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* --- Carte-lien (course cliquable → page détail) ------------------------- */
+.tx-course-link {
+  display: block;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s;
+}
+.tx-course-link:hover { border-color: var(--accent); transform: translateY(-1px); }
+.tx-course-link .tx-tel { color: var(--accent-2); }
+.tx-detail-arrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* --- Page détail d'une course -------------------------------------------- */
+.tx-detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem 1rem;
+  align-items: baseline;
+}
+.tx-detail-grid > .fl-label { padding-top: 0.1rem; }
+
+/* --- Boutons de statut (page détail) ------------------------------------- */
+.tx-stbtn {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.tx-stbtn:hover { border-color: var(--muted); }
+.tx-stbtn.on { font-weight: 700; background: rgba(255, 255, 255, 0.05); }

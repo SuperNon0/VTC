@@ -1,7 +1,7 @@
 # Démarrage complet — de zéro au hub avec login unique
 
 > Parcours pas-à-pas : installer le hub, le configurer, le publier sur
-> `super-nono.cc`, puis brancher le **login unique (SSO)** Cloudflare.
+> `ton-domaine.cc`, puis brancher le **login unique (SSO)** Cloudflare.
 
 ---
 
@@ -10,7 +10,7 @@
 Sur le **shell de ton node Proxmox**, lance (mets ton e-mail Google) :
 
 ```bash
-ADMIN_EMAIL=ton.email@gmail.com bash -c "$(curl -fsSL https://raw.githubusercontent.com/SuperNon0/site/main/install.sh)"
+ADMIN_EMAIL=ton.email@gmail.com bash -c "$(curl -fsSL https://raw.githubusercontent.com/SuperNon0/VTC/main/install.sh)"
 ```
 
 > Ajoute `CT_STORAGE=local-zfs` devant si ton stockage n'est pas `local-lvm`.
@@ -31,16 +31,16 @@ ADMIN_EMAIL=ton.email@gmail.com bash -c "$(curl -fsSL https://raw.githubusercont
 
 *(Tes 9 apps sont déjà pré-remplies : tu n'as qu'à corriger les liens.)*
 
-## Partie 3 — Publier le hub sur `super-nono.cc`
+## Partie 3 — Publier le hub sur `ton-domaine.cc`
 
 Dans ton **tunnel Cloudflare** (le conteneur qui gère `cloudflared`), ajoute une
 route :
 
 ```
-super-nono.cc   →   http://IP_DU_HUB:8000
+ton-domaine.cc   →   http://IP_DU_HUB:8000
 ```
 
-Recharge → `https://super-nono.cc` doit afficher le hub.
+Recharge → `https://ton-domaine.cc` doit afficher le hub.
 
 ---
 
@@ -55,7 +55,7 @@ methods → Add new → Google**.
 
 ### 4.2 Application Access (couvre tout)
 Access → **Applications → Add → Self-hosted** :
-- domaines : **`super-nono.cc`** ET **`*.super-nono.cc`**
+- domaines : **`ton-domaine.cc`** ET **`*.ton-domaine.cc`**
 - Identity providers : **Google**.
 
 ### 4.3 Policy (qui a le droit)
@@ -71,8 +71,8 @@ Hub → **Paramètres → Cloudflare / Accès** → colle **Équipe** + **AUD**,
 
 ## Partie 5 — Tester
 
-1. `https://super-nono.cc` en navigation privée → **login Google** → le hub.
-2. `https://fuel.super-nono.cc` → **déjà connecté** (SSO). 🎉
+1. `https://ton-domaine.cc` en navigation privée → **login Google** → le hub.
+2. `https://fuel.ton-domaine.cc` → **déjà connecté** (SSO). 🎉
 
 ## Partie 6 — Ajouter un membre
 

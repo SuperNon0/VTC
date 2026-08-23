@@ -34,14 +34,14 @@
   <section class="tx-day">
     <h3 class="tx-day-label">{{ g.label }}</h3>
     {% for c in g.courses %}
-    <article class="tx-course" data-id="{{ c.id }}">
+    <a class="tx-course tx-course-link" href="{{ url_for('main.course_detail', course_id=c.id) }}">
       <div class="tx-course-top">
         <span class="tx-time">{{ c.quand_fmt.split(' à ')[1] if ' à ' in c.quand_fmt else '' }}</span>
-        <span class="tx-statut tx-st-{{ c.statut }}" id="st-{{ c.id }}">{{ c.statut_label }}</span>
+        <span class="tx-statut tx-st-{{ c.statut }}">{{ c.statut_label }}</span>
       </div>
       <div class="tx-client">
         {% if c.client_nom %}<b>{{ c.client_nom }}</b>{% else %}<b class="tx-muted">Client non précisé</b>{% endif %}
-        {% if c.client_tel %}<a href="tel:{{ c.client_tel }}" class="tx-tel">{{ c.client_tel }}</a>{% endif %}
+        {% if c.client_tel %}<span class="tx-tel">{{ c.client_tel }}</span>{% endif %}
       </div>
       <div class="tx-trajet">
         <span class="tx-pt">{{ c.depart or '—' }}</span>
@@ -50,17 +50,10 @@
       </div>
       {% if c.notes %}<div class="tx-notes">{{ c.notes }}</div>{% endif %}
       <div class="tx-course-foot">
-        {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% endif %}
-        <div class="tx-actions">
-          <select class="tx-select" onchange="majStatut({{ c.id }}, this.value)" aria-label="Statut">
-            {% for code, label in [('a_faire','À faire'),('en_cours','En cours'),('terminee','Terminée'),('annulee','Annulée')] %}
-            <option value="{{ code }}" {{ 'selected' if c.statut == code else '' }}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <button class="btn ghost small" onclick="addToCalendar({{ c.id }})">📅 Agenda</button>
-        </div>
+        {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% else %}<span></span>{% endif %}
+        <span class="tx-detail-arrow">Détail ›</span>
       </div>
-    </article>
+    </a>
     {% endfor %}
   </section>
   {% endfor %}
@@ -78,29 +71,6 @@ function toast(m, err) {
   t.style.color = err ? '#fff' : '#0e0f11';
   t.classList.add('show');
   setTimeout(function () { t.classList.remove('show'); }, 2400);
-}
-
-// Détecte iOS pour choisir la bonne méthode d'export (cahier §6.6).
-function isIOS() {
-  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-function addToCalendar(id) {
-  window.location.href = isIOS()
-    ? '/course/' + id + '/ics'
-    : '/course/' + id + '/google';
-}
-
-async function majStatut(id, statut) {
-  var body = new URLSearchParams({ statut: statut });
-  var r = await fetch('/api/courses/' + id + '/statut', {
-    method: 'POST', credentials: 'same-origin', body: body,
-  });
-  var j = await r.json().catch(function () { return {}; });
-  if (!r.ok || !j.ok) { toast(j.error || 'Erreur', true); return; }
-  var badge = document.getElementById('st-' + id);
-  if (badge) { badge.textContent = j.label; badge.className = 'tx-statut tx-st-' + statut; }
-  toast('Statut mis à jour ✓');
 }
 
 // ── Web Push : abonnement de cet appareil (cahier §6.5) ──────────────────────

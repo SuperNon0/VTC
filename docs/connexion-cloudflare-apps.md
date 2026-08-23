@@ -125,13 +125,13 @@ def login_local(password):
     return False
 ```
 
-> Le fichier `panel/auth.py` du **site-base** est une **implémentation de
+> Le fichier `panel/auth.py` du **vtc** est une **implémentation de
 > référence** complète de cette logique (JWT Cloudflare + login local) : à
 > reprendre / adapter.
 
 ## 7. Ce que le propriétaire fait de son côté (aucune action pour le dev)
 
-- Ajouter le sous-domaine de l'app à la **policy Cloudflare Access** (`*.super-nono.cc`).
+- Ajouter le sous-domaine de l'app à la **policy Cloudflare Access** (`*.ton-domaine.cc`).
 - Fournir au dev : équipe, AUD, mot de passe admin.
 - (Recommandé) pare-feu pour que l'app ne soit joignable **que** via Cloudflare.
 
