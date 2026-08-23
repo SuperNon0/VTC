@@ -2,7 +2,7 @@
 
   - Extraction IA (fournisseur + clé + modèle) — super-admin (cahier §6.1)
   - Grilles tarifaires                          — super-admin (cahier §6.3)
-  - Lieux fréquents                             — super-admin (cahier §6.2)
+  - Lieux fréquents                             — tout conducteur actif (§6.2)
   - Clients habitués                            — tout conducteur actif (§6.4)
 
 Les réglages IA/VAPID/… sont stockés dans `app_settings` (clé/valeur), comme la
@@ -119,16 +119,19 @@ def tarif_supprimer(tarif_id: int):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Lieux fréquents (cahier §6.2) — super-admin uniquement
+# Lieux fréquents (cahier §6.2) — gérables par TOUT conducteur actif.
+# La liste se construit au fur et à mesure : chaque conducteur peut ajouter ou
+# retirer un lieu (choix du propriétaire : liste collaborative, pas réservée au
+# super-admin).
 # ─────────────────────────────────────────────────────────────────────────────
 @bp.route("/parametres/lieux")
-@super_admin_required
+@login_required
 def lieux():
     return render_template("config_lieux.html", lieux=C.liste_lieux())
 
 
 @bp.route("/parametres/lieux/ajouter", methods=["POST"])
-@super_admin_required
+@login_required
 def lieu_ajouter():
     nom = (request.form.get("nom") or "").strip()
     adresse = (request.form.get("adresse") or "").strip() or None
@@ -141,7 +144,7 @@ def lieu_ajouter():
 
 
 @bp.route("/parametres/lieux/<int:lieu_id>/supprimer", methods=["POST"])
-@super_admin_required
+@login_required
 def lieu_supprimer(lieu_id: int):
     C.supprimer_lieu(lieu_id)
     flash("Lieu supprimé.", "info")

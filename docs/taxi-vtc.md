@@ -79,5 +79,7 @@ les colonnes nécessaires sont déjà en place et indexées.
 
 `super_admin` et `membre` (= conducteur). Le super-admin est aussi conducteur.
 N'importe quel conducteur peut créer et assigner une course, à quiconque ou à
-lui-même. Réglages réservés au super-admin : IA, grilles tarifaires, lieux
-fréquents (les clients habitués sont gérables par tout conducteur actif).
+lui-même. Réglages réservés au super-admin : **extraction IA** (clé API) et
+**grilles tarifaires** (prix). Gérables par **tout conducteur actif** : les
+**lieux fréquents** (liste collaborative, complétée au fur et à mesure) et les
+**clients habitués**.

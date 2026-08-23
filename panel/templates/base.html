@@ -44,9 +44,10 @@
     <a href="{{ url_for('main.nouvelle_course') }}" class="appnav-lnk{% if request.endpoint == 'main.nouvelle_course' %} active{% endif %}">+ Course</a>
     <a href="{{ url_for('main.mes_courses') }}" class="appnav-lnk{% if request.endpoint == 'main.mes_courses' %} active{% endif %}">Mes courses</a>
     <a href="{{ url_for('config.clients') }}" class="appnav-lnk{% if request.endpoint == 'config.clients' %} active{% endif %}">Clients</a>
+    <a href="{{ url_for('config.lieux') }}" class="appnav-lnk{% if request.endpoint == 'config.lieux' %} active{% endif %}">Lieux</a>
     <a href="{{ url_for('main.mes_stats') }}" class="appnav-lnk{% if request.endpoint == 'main.mes_stats' %} active{% endif %}">Stats</a>
     {% if is_super_admin %}
-    <a href="{{ url_for('accounts.parametres') }}" class="appnav-lnk{% if request.blueprint in ('accounts', 'config') and request.endpoint != 'config.clients' %} active{% endif %}">Paramètres</a>
+    <a href="{{ url_for('accounts.parametres') }}" class="appnav-lnk{% if request.blueprint in ('accounts', 'config') and request.endpoint not in ('config.clients', 'config.lieux') %} active{% endif %}">Paramètres</a>
     {% endif %}
     <a href="{{ url_for('auth.logout') }}" class="appnav-lnk appnav-out">Déconnexion</a>
   </nav>
