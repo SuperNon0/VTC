@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44" role="img" aria-label="site-base">
+  <!-- Marque générique « base / fondation » du template. Remplace-la par le
+       logo de ton projet (même viewBox 44x44 conseillé). -->
+  <rect x="1" y="1" width="42" height="42" rx="10" fill="#e8c547"/>
+  <g fill="none" stroke="#0e0f11" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M22 9 L34 15 L22 21 L10 15 Z"/>
+    <path d="M10 22 L22 28 L34 22"/>
+    <path d="M10 29 L22 35 L34 29"/>
+  </g>
+</svg>

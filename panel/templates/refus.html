@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Demande refusée — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="login-card">
+  <div class="login-logo">
+    <img class="logo-mark" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="44" height="44">
+    <span class="logo"><span class="g">{{ brand.prefix }}</span><span class="i">{{ brand.suffix }}</span></span>
+  </div>
+  <div class="access-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>
+    </svg>
+  </div>
+  <h2>Demande refusée</h2>
+  <span class="mail-chip">{{ email }}</span>
+  <p class="access-text">Un administrateur a refusé ta demande d'accès
+    à {{ brand.prefix }}{{ brand.suffix }}.</p>
+  <form method="post" action="{{ url_for('auth.request_access') }}">
+    <button type="submit" class="btn ghost full">Redemander un accès</button>
+  </form>
+</div>
+{% endblock %}

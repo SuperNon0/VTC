@@ -1,0 +1,10 @@
+/* =========================================================================
+   Polices du thème « RecipeLog » (voir docs/theme-recipelog.md).
+   - DM Serif Display : titres, logo, valeurs numériques mises en avant.
+   - DM Mono          : corps de texte, labels, boutons, navigation, champs.
+
+   Chargées depuis Google Fonts. Si tu déploies dans un réseau sans accès
+   Internet côté client, remplace cet @import par des @font-face pointant vers
+   des .woff2 hébergés dans panel/static/fonts/ (voir docs/theme-recipelog.md §4).
+   ========================================================================= */
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap");

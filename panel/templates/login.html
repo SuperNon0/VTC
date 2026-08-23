@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Connexion locale — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<form class="login-card" method="post" action="{{ url_for('auth.login') }}">
+  <div class="login-logo">
+    <img class="logo-mark" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="44" height="44">
+    <span class="logo"><span class="g">{{ brand.prefix }}</span><span class="i">{{ brand.suffix }}</span></span>
+  </div>
+  <span class="badge">{{ brand.badge }}</span>
+  <input type="password" name="password" placeholder="Mot de passe" autofocus autocomplete="current-password">
+  <button type="submit" class="btn primary full">Se connecter</button>
+  <a class="forgot-link" href="{{ url_for('auth.forgot') }}">Mot de passe oublié ?</a>
+  <p class="access-note">Accès local (réseau domestique) · administrateur</p>
+</form>
+{% endblock %}

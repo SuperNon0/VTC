@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Demande en attente — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="login-card">
+  <div class="login-logo">
+    <img class="logo-mark" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="44" height="44">
+    <span class="logo"><span class="g">{{ brand.prefix }}</span><span class="i">{{ brand.suffix }}</span></span>
+  </div>
+  <div class="access-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--pending)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>
+    </svg>
+  </div>
+  <h2>Demande en attente</h2>
+  <span class="mail-chip">{{ email }}</span>
+  <p class="access-text">Ta demande a bien été envoyée. Un administrateur
+    doit la valider — tu auras accès dès qu'elle est approuvée.</p>
+  <form method="get" action="{{ url_for('auth.gateway') }}">
+    <button type="submit" class="btn ghost full">Rafraîchir</button>
+  </form>
+  {% if demande_le %}<p class="access-note">Envoyée le {{ demande_le }}</p>{% endif %}
+</div>
+{% endblock %}

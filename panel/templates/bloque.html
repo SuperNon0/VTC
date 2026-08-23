@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Accès suspendu — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block topbar %}{% endblock %}
+{% block content %}
+<div class="login-card">
+  <div class="login-logo">
+    <img class="logo-mark" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="44" height="44">
+    <span class="logo"><span class="g">{{ brand.prefix }}</span><span class="i">{{ brand.suffix }}</span></span>
+  </div>
+  <div class="access-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>
+    </svg>
+  </div>
+  <h2>Accès suspendu</h2>
+  <span class="mail-chip">{{ email }}</span>
+  <p class="access-text">Ton accès à {{ brand.prefix }}{{ brand.suffix }} a été suspendu par un
+    administrateur.</p>
+</div>
+{% endblock %}
