@@ -70,6 +70,15 @@ notification **Web Push** part vers **tous les appareils** du conducteur assign�
 ([`panel/webpush.py`](../panel/webpush.py)). Pas de SMS (choix du cahier). Si le
 push échoue (non installé, refusé), le calendrier reste la source fiable.
 
+### Message de notification personnalisable + test
+
+*Paramètres → Notifications* (super-admin) : le **titre** et le **texte** de la
+notification d'assignation se composent avec des placeholders `[nom]`,
+`[telephone]`, `[depart]`, `[arrivee]`, `[prix]`, `[date]`, `[duree]`
+(stockés dans `app_settings` : `push_title_template` / `push_body_template`,
+défauts sinon). Un **bouton de test par conducteur** envoie un push de
+vérification à ses appareils (message clair si aucun appareil n'est abonné).
+
 ## Web Push & PWA (cahier §7)
 
 - Clés **VAPID** générées une fois et stockées en base (`app_settings`).

@@ -220,20 +220,14 @@ def api_creer_course():
     C.creer_course(data, compte["id"])
 
     # Notification push au conducteur assigné (jamais au créateur) — cahier §5/§6.5.
-    corps = _resume_course(data)
+    # Titre + corps personnalisables (Paramètres → Notifications, super-admin).
+    from ..utils import notif_titre, notif_corps
     webpush.notifier_conducteur(
-        conducteur_id, "Nouvelle course assignée", corps,
+        conducteur_id, notif_titre(data), notif_corps(data),
         url=url_for("main.dashboard"),
     )
     flash("Course créée et assignée ✓", "success")
     return redirect(url_for("main.dashboard"))
-
-
-def _resume_course(data: dict) -> str:
-    quand = fmt_dt(data["quand"]) if data.get("quand") else ""
-    trajet = " → ".join(x for x in (data.get("depart"), data.get("arrivee")) if x)
-    parts = [p for p in (quand, trajet) if p]
-    return " · ".join(parts) or "Voir le détail dans ton calendrier."
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+import unicodedata
 
 from .db import get_db
 
@@ -127,14 +128,29 @@ def get_client(client_id: int):
     ).fetchone()
 
 
+def _sans_accents(s: str) -> str:
+    """Minuscule + sans accents, pour une recherche tolérante (« paul » → « Paül »)."""
+    s = unicodedata.normalize("NFKD", s or "")
+    return "".join(c for c in s if not unicodedata.combining(c)).casefold()
+
+
 def chercher_clients(q: str, limit: int = 8) -> list:
-    """Autocomplétion : recherche par nom ou téléphone (cahier §6.4)."""
-    like = f"%{q}%"
-    return get_db().execute(
-        "SELECT * FROM clients WHERE nom LIKE ? OR telephone LIKE ? "
-        "ORDER BY nom LIMIT ?",
-        (like, like, limit),
-    ).fetchall()
+    """Autocomplétion par nom ou téléphone (cahier §6.4).
+
+    Insensible à la casse ET aux accents : « paul » retrouve « Paul », « éric »
+    retrouve « Eric ». La base de clients habitués est petite, on filtre donc en
+    Python (comparaison normalisée) plutôt qu'avec un LIKE limité à l'ASCII.
+    """
+    qn = _sans_accents(q).strip()
+    if not qn:
+        return []
+    out = []
+    for row in get_db().execute("SELECT * FROM clients ORDER BY nom").fetchall():
+        if qn in _sans_accents(row["nom"]) or qn in _sans_accents(row["telephone"] or ""):
+            out.append(row)
+            if len(out) >= limit:
+                break
+    return out
 
 
 def creer_client(nom: str, telephone: str | None, adresses: list | None,

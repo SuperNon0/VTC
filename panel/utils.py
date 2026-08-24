@@ -64,6 +64,63 @@ def _utc_stamp(ts: int) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Notifications Web Push — titre + corps personnalisables (mêmes placeholders)
+# ─────────────────────────────────────────────────────────────────────────────
+NOTIF_PLACEHOLDERS = {
+    "nom": "Nom du client",
+    "telephone": "Téléphone",
+    "depart": "Lieu de prise en charge",
+    "arrivee": "Lieu de dépose",
+    "prix": "Prix",
+    "date": "Date et heure",
+    "duree": "Durée de trajet estimée",
+}
+DEFAULT_NOTIF_TITLE = "Nouvelle course assignée"
+DEFAULT_NOTIF_BODY = "[date] · [depart] → [arrivee]"
+
+
+def _course_get(c, key):
+    """Accès tolérant à une clé, que `c` soit un dict ou une Row SQLite."""
+    try:
+        return c[key]
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+def _notif_values(c) -> dict:
+    from .maps import fmt_duree
+    prix = _course_get(c, "prix")
+    return {
+        "nom": (_course_get(c, "client_nom") or "").strip() or "client",
+        "telephone": (_course_get(c, "client_tel") or "").strip(),
+        "depart": (_course_get(c, "depart") or "").strip(),
+        "arrivee": (_course_get(c, "arrivee") or "").strip(),
+        "prix": f"{prix:.2f} €" if prix is not None else "",
+        "date": fmt_dt(_course_get(c, "quand")),
+        "duree": fmt_duree(_course_get(c, "duree_min")),
+    }
+
+
+def notif_title_template() -> str:
+    from .settings import get_setting
+    return get_setting("push_title_template") or DEFAULT_NOTIF_TITLE
+
+
+def notif_body_template() -> str:
+    from .settings import get_setting
+    return get_setting("push_body_template") or DEFAULT_NOTIF_BODY
+
+
+def notif_titre(course) -> str:
+    t = _render_template(notif_title_template(), _notif_values(course)).strip()
+    return t or DEFAULT_NOTIF_TITLE
+
+
+def notif_corps(course) -> str:
+    return _render_template(notif_body_template(), _notif_values(course)).strip()
+
+
 def _cal_values(course) -> dict:
     """Valeurs concrètes des placeholders pour une course donnée."""
     from .courses import STATUT_LABELS  # import tardif : évite tout couplage

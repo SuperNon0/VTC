@@ -111,6 +111,11 @@
           (titre + notes de l'événement, avec placeholders).</span>
         <a class="btn ghost small" href="{{ url_for('config.calendrier') }}">Modèle calendrier</a>
       </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span class="access-text" style="text-align:left;margin:0">Message des notifications
+          + test d'envoi par conducteur.</span>
+        <a class="btn ghost small" href="{{ url_for('config.notifications') }}">Notifications</a>
+      </div>
       <form method="post" action="{{ url_for('config.estimation_toggle') }}"
             style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0">
         <span class="access-text" style="text-align:left;margin:0">Estimation du temps de trajet

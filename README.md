@@ -193,6 +193,17 @@ sudo bash /opt/vtc/deploy/reset_admin.sh              # génère un nouveau mot 
 sudo bash /opt/vtc/deploy/reset_admin.sh "MonMotDePasse"
 ```
 
+## Vérifier le fuseau horaire du serveur
+
+Les horaires des courses utilisent l'heure **locale du serveur**. Pour vérifier
+(et corriger si besoin) :
+
+```bash
+sudo bash /opt/vtc/deploy/check_timezone.sh          # affiche le fuseau + l'heure vue par l'app
+sudo timedatectl set-timezone Europe/Paris           # corriger (France)
+sudo systemctl restart vtc
+```
+
 ## Unifier ton compte (mot de passe + e-mail Google)
 
 Pour n'avoir **qu'un seul compte super-admin** accessible par mot de passe **et**

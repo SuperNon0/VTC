@@ -162,6 +162,88 @@ def tarif_supprimer(tarif_id: int):
     return redirect(url_for("config.tarifs"))
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Notifications Web Push (cahier §6.5) — message personnalisable + test (super-admin)
+# ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/parametres/notifications")
+@super_admin_required
+def notifications():
+    from ..utils import (NOTIF_PLACEHOLDERS, DEFAULT_NOTIF_TITLE,
+                         DEFAULT_NOTIF_BODY, notif_title_template,
+                         notif_body_template)
+    from .. import webpush
+    conducteurs = []
+    for c in C.conducteurs_actifs():
+        conducteurs.append({
+            "id": c["id"],
+            "email": c["email"] or "super-admin (accès local)",
+            "abonne": webpush.compte_a_des_souscriptions(c["id"]),
+        })
+    return render_template(
+        "config_notifications.html",
+        titre=notif_title_template(),
+        corps=notif_body_template(),
+        default_titre=DEFAULT_NOTIF_TITLE,
+        default_corps=DEFAULT_NOTIF_BODY,
+        placeholders=NOTIF_PLACEHOLDERS,
+        conducteurs=conducteurs,
+        push_dispo=webpush.is_available(),
+        impersonating=bool(session.get("impersonator_id")),
+    )
+
+
+@bp.route("/parametres/notifications", methods=["POST"])
+@super_admin_required
+def notifications_save():
+    if session.get("impersonator_id"):
+        flash("Reviens à ton compte pour modifier ces réglages.", "error")
+        return redirect(url_for("config.notifications"))
+    if request.form.get("reset"):
+        set_setting("push_title_template", "")
+        set_setting("push_body_template", "")
+        flash("Message de notification réinitialisé.", "info")
+        return redirect(url_for("config.notifications"))
+    set_setting("push_title_template", (request.form.get("titre") or "").strip())
+    set_setting("push_body_template", (request.form.get("corps") or "").strip())
+    audit("config_notifications", _acteur())
+    flash("Message de notification enregistré ✓", "success")
+    return redirect(url_for("config.notifications"))
+
+
+@bp.route("/parametres/notifications/test", methods=["POST"])
+@super_admin_required
+def notifications_test():
+    """Envoie une notification de test à un conducteur (vérifie ses appareils)."""
+    from .. import webpush
+    cid = _int_or_none(request.form.get("compte_id"))
+    cible = None
+    for c in C.conducteurs_actifs():
+        if c["id"] == cid:
+            cible = c
+            break
+    if cible is None:
+        flash("Conducteur introuvable.", "error")
+        return redirect(url_for("config.notifications"))
+    nom = cible["email"] or "super-admin"
+    if not webpush.is_available():
+        flash("Web Push indisponible côté serveur (dépendances manquantes).", "error")
+        return redirect(url_for("config.notifications"))
+    if not webpush.compte_a_des_souscriptions(cid):
+        flash(f"{nom} n'a aucun appareil abonné : il doit d'abord activer les "
+              "notifications depuis son calendrier (et, sur iPhone, avoir ajouté "
+              "l'app à l'écran d'accueil).", "error")
+        return redirect(url_for("config.notifications"))
+    n = webpush.notifier_conducteur(
+        cid, "Test de notification VTC",
+        "Si tu vois ce message, les notifications fonctionnent ✓",
+        url=url_for("main.dashboard"))
+    if n > 0:
+        flash(f"Notification de test envoyée à {nom} ({n} appareil·s) ✓", "success")
+    else:
+        flash(f"Échec de l'envoi à {nom} (abonnement peut-être périmé).", "error")
+    return redirect(url_for("config.notifications"))
+
+
 @bp.route("/parametres/estimation", methods=["POST"])
 @super_admin_required
 def estimation_toggle():
