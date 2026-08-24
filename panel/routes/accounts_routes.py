@@ -77,6 +77,7 @@ def parametres():
     return render_template(
         "parametres.html",
         has_password=bool(moi and moi["mdp_hash"]),
+        mon_email=(moi["email"] if moi and moi["email"] else ""),
         impersonating=bool(session.get("impersonator_id")),
         cf=cf_config(),
         diag=cf_diagnostic(),
@@ -188,6 +189,43 @@ def changer_mdp():
     db.commit()
     audit("changer_mdp", _acteur())
     flash("Mot de passe administrateur mis à jour.", "success")
+    return redirect(url_for("accounts.parametres"))
+
+
+@bp.route("/parametres/mon-email", methods=["POST"])
+@super_admin_required
+def changer_mon_email():
+    """Rattache (ou détache) l'e-mail Google au compte super-admin courant.
+
+    Objectif : un SEUL compte super-admin qui réunit les deux accès —
+    mot de passe local ET e-mail Google (connexion Cloudflare). On refuse un
+    e-mail déjà pris par un autre compte (l'e-mail identifie le compte).
+    """
+    if session.get("impersonator_id"):
+        flash("Reviens à ton compte pour modifier ton e-mail.", "error")
+        return redirect(url_for("accounts.parametres"))
+
+    db = get_db()
+    moi = get_compte(session.get("compte_id"))
+    email = (request.form.get("email") or "").strip().lower() or None
+
+    if email:
+        autre = db.execute(
+            "SELECT id, role FROM comptes WHERE email = ? AND id != ?",
+            (email, moi["id"]),
+        ).fetchone()
+        if autre is not None:
+            flash("Cet e-mail est déjà utilisé par un autre compte. Supprime "
+                  "d'abord ce compte dans « Comptes », puis réessaie.", "error")
+            return redirect(url_for("accounts.parametres"))
+
+    db.execute("UPDATE comptes SET email = ? WHERE id = ?", (email, moi["id"]))
+    db.commit()
+    audit("changer_email", _acteur(), email or "(détaché)")
+    flash("E-mail Google enregistré. Tu peux te connecter par mot de passe OU "
+          "via Cloudflare avec cet e-mail — c'est le même compte." if email
+          else "E-mail Google retiré : connexion par mot de passe uniquement.",
+          "success")
     return redirect(url_for("accounts.parametres"))
 
 
