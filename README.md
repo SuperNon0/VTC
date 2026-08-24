@@ -100,6 +100,10 @@ Crée un conteneur LXC Debian, installe l'app dans `/opt/vtc`, génère le `.env
 crée le service systemd `vtc` et un helper de mise à jour. Options :
 `CTID=130 ADMIN_PASSWORD=... ADMIN_EMAIL=ton@gmail.com bash -c "$(curl ...)"`.
 
+> 💡 En passant **`ADMIN_EMAIL=ton@gmail.com`** dès l'installation, ton unique
+> compte super-admin est créé **directement avec ton e-mail Google** (login
+> mot de passe **et** Cloudflare) — aucun réglage à faire ensuite.
+
 **Option 2 — sur une machine/CT déjà prête** :
 
 ```bash
@@ -187,6 +191,18 @@ Le mot de passe super-admin se réinitialise **sur le serveur** (accès shell) :
 ```bash
 sudo bash /opt/vtc/deploy/reset_admin.sh              # génère un nouveau mot de passe
 sudo bash /opt/vtc/deploy/reset_admin.sh "MonMotDePasse"
+```
+
+## Unifier ton compte (mot de passe + e-mail Google)
+
+Pour n'avoir **qu'un seul compte super-admin** accessible par mot de passe **et**
+par ton e-mail Google (Cloudflare). Depuis l'app : *Plus → Paramètres → Mon
+e-mail Google*. En ligne de commande (fusionne aussi un éventuel doublon de
+compte, sans perdre de course) :
+
+```bash
+sudo bash /opt/vtc/deploy/set_email.sh ton.email@gmail.com   # rattacher
+sudo bash /opt/vtc/deploy/set_email.sh --clear               # détacher
 ```
 
 ---
