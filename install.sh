@@ -14,7 +14,7 @@ BRANCH="${BRANCH:-main}"
 INSTALL_DIR="/opt/vtc"
 
 CTID="${CTID:-}"
-HOSTNAME_CT="${HOSTNAME_CT:-hub}"
+HOSTNAME_CT="${HOSTNAME_CT:-vtc}"
 TPL_PREFIX="debian-12-standard"
 RAM_MB="${RAM_MB:-1024}"; CORES="${CORES:-2}"; DISK_GB="${DISK_GB:-6}"
 BRIDGE="${BRIDGE:-vmbr0}"
