@@ -34,5 +34,10 @@ PY
 
 echo
 echo "Si le fuseau n'est pas le bon (France = Europe/Paris) :"
-echo "    sudo timedatectl set-timezone Europe/Paris"
-echo "    sudo systemctl restart vtc      # pour que l'app reprenne le bon fuseau"
+echo "  • Machine / VM :"
+echo "      sudo timedatectl set-timezone Europe/Paris"
+echo "  • Conteneur LXC (si timedatectl échoue « Connection timed out ») :"
+echo "      sudo ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtime"
+echo "      echo Europe/Paris | sudo tee /etc/timezone"
+echo "  Puis, dans tous les cas :"
+echo "      sudo systemctl restart vtc      # pour que l'app reprenne le bon fuseau"
