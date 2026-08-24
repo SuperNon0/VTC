@@ -176,10 +176,16 @@ def api_creer_course():
         flash("Choisis un conducteur assigné valide.", "error")
         return redirect(url_for("main.nouvelle_course"))
 
-    # Date/heure : champ datetime-local → timestamp.
-    quand = _parse_datetime_local(f.get("quand", ""))
+    # Date et heure : deux champs séparés → timestamp. L'heure vide vaut 00:00.
+    # (Rétrocompatible avec un ancien champ combiné « quand ».)
+    date_str = (f.get("date") or "").strip()
+    heure_str = (f.get("heure") or "").strip() or "00:00"
+    if date_str:
+        quand = _parse_datetime_local(f"{date_str}T{heure_str}")
+    else:
+        quand = _parse_datetime_local(f.get("quand", ""))
     if quand is None:
-        flash("Renseigne une date et une heure valides.", "error")
+        flash("Renseigne au moins une date valide.", "error")
         return redirect(url_for("main.nouvelle_course"))
 
     # Prix : soit une grille tarifaire, soit « Autre » (prix libre) — cahier §6.3.

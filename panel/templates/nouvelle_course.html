@@ -69,10 +69,20 @@
       </div>
     </div>
 
-    {# ── Date & heure de prise en charge ───────────────────────────────────── #}
+    {# ── Date & heure de prise en charge (deux champs séparés) ─────────────── #}
     <div class="tx-field">
-      <label class="fl-label" for="quand">Date et heure — quand aller chercher le client</label>
-      <input class="tx-input" type="datetime-local" name="quand" id="quand" required>
+      <label class="fl-label">Date et heure — quand aller chercher le client</label>
+      <div class="tx-chips">
+        <button type="button" class="tx-chip" onclick="setJour(0)">Aujourd'hui</button>
+        <button type="button" class="tx-chip" onclick="setJour(1)">Demain</button>
+        <button type="button" class="tx-chip" onclick="setJour(2)">Après-demain</button>
+      </div>
+      <div style="display:flex;gap:.6rem;margin-top:.5rem">
+        <input class="tx-input" type="date" name="date" id="date" required style="flex:2"
+               aria-label="Date">
+        <input class="tx-input" type="time" name="heure" id="heure" style="flex:1"
+               aria-label="Heure">
+      </div>
     </div>
 
     {# ── Prix : grille auto-sélectionnée si départ+arrivée correspondent (§6.3) ─ #}
@@ -145,6 +155,15 @@ function onTarif() {
   var sel = document.getElementById('tarif_choix').value;
   document.getElementById('prix_libre').style.display = (sel === 'autre') ? 'block' : 'none';
   if (sel !== '' ) document.getElementById('tarif-auto').style.display = 'none';
+}
+
+// Boutons rapides de date : renseigne le champ « date » (l'heure est conservée).
+function setJour(offset) {
+  var d = new Date();
+  d.setDate(d.getDate() + offset);
+  var m = d.getMonth() + 1, day = d.getDate();
+  document.getElementById('date').value =
+    d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
 }
 
 // ── Lieux configurés : autocomplétion des adresses (§6.2) ────────────────────
@@ -228,7 +247,11 @@ async function extraireIA() {
     if (i.telephone) document.getElementById('client_tel').value = i.telephone;
     if (i.prise_en_charge) { document.getElementById('depart').value = i.prise_en_charge; matchLieuTexte('depart', i.prise_en_charge); }
     if (i.depose) { document.getElementById('arrivee').value = i.depose; matchLieuTexte('arrivee', i.depose); }
-    if (i.date_heure) document.getElementById('quand').value = i.date_heure;
+    if (i.date_heure) {
+      var parts = i.date_heure.split('T');
+      if (parts[0]) document.getElementById('date').value = parts[0];
+      if (parts[1]) document.getElementById('heure').value = parts[1].slice(0, 5);
+    }
     autoMatchTarif();
     toast('Infos extraites ✓ — vérifie puis complète.');
   } catch (e) {
