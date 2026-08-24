@@ -80,6 +80,14 @@
     <span class="access-text" style="text-align:left;margin:0">Ajouter cette course au calendrier de mon téléphone</span>
     <button class="btn ghost small" onclick="addToCalendar({{ c.id }})">📅 Ajouter à mon agenda</button>
   </section>
+
+  {# ── Suppression de la course ─────────────────────────────────────────── #}
+  <section style="margin-top:1rem;text-align:right">
+    <form method="post" action="{{ url_for('main.course_supprimer', course_id=c.id) }}"
+          onsubmit="return confirm('Supprimer définitivement cette course ?');">
+      <button type="submit" class="btn danger small">🗑 Supprimer la course</button>
+    </form>
+  </section>
 </main>
 
 <div class="toast" id="toast"></div>

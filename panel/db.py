@@ -25,6 +25,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS comptes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     email         TEXT UNIQUE,                       -- e-mail Google (NULL possible pour un super-admin local seul)
+    nom           TEXT,                              -- nom d'affichage (facultatif, ex. « Noé »)
     role          TEXT NOT NULL DEFAULT 'membre',    -- super_admin | membre
     etat          TEXT NOT NULL DEFAULT 'pending',   -- pending | actif | refused | bloque
     mdp_hash      TEXT,                              -- seulement pour un compte à login local
@@ -179,6 +180,10 @@ def _migrate(db: sqlite3.Connection) -> None:
     courses = cols("courses")
     if "duree_min" not in courses:
         db.execute("ALTER TABLE courses ADD COLUMN duree_min INTEGER")
+
+    comptes = cols("comptes")
+    if "nom" not in comptes:
+        db.execute("ALTER TABLE comptes ADD COLUMN nom TEXT")
     db.commit()
 
 

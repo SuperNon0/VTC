@@ -88,6 +88,21 @@ def _course_get(c, key):
         return None
 
 
+def label_compte(c) -> str:
+    """Nom lisible d'un compte : nom d'affichage, sinon e-mail, sinon repli.
+
+    Utilisé partout où un conducteur est présenté (au lieu de son e-mail brut).
+    """
+    nom = (_course_get(c, "nom") or "").strip()
+    if nom:
+        return nom
+    email = (_course_get(c, "email") or "").strip()
+    if email:
+        return email
+    return ("Super-admin (accès local)"
+            if _course_get(c, "role") == "super_admin" else "Compte sans nom")
+
+
 def _notif_values(c) -> dict:
     from .maps import fmt_duree
     prix = _course_get(c, "prix")

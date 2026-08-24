@@ -16,7 +16,7 @@
   {% endif %}
 
   {% for c in courses %}
-  <a class="tx-course tx-course-link" href="{{ url_for('main.course_detail', course_id=c.id) }}">
+  <a class="tx-course tx-course-link st-{{ c.statut }}" href="{{ url_for('main.course_detail', course_id=c.id) }}">
     <div class="tx-course-top">
       <span class="tx-time">{{ c.quand_fmt }}</span>
       <span class="tx-statut tx-st-{{ c.statut }}">{{ c.statut_label }}</span>

@@ -30,18 +30,10 @@ def _row_to_view(row) -> dict:
     d["cree_fmt"] = fmt_dt(row["cree"], with_time=False)
     d["derniere_cnx_fmt"] = fmt_dt(row["derniere_cnx"])
     d["bloque_fmt"] = fmt_dt(row["bloque"], with_time=False)
-    # Libellé affiché : l'e-mail s'il existe, sinon un intitulé lisible (un
-    # super-admin en login local n'a pas forcément d'e-mail Google).
-    email = (row["email"] or "").strip()
-    if email:
-        d["nom_affiche"] = email
-        d["initiale"] = email[0].upper()
-    elif row["role"] == "super_admin":
-        d["nom_affiche"] = "Super-admin (accès local)"
-        d["initiale"] = "A"
-    else:
-        d["nom_affiche"] = "Compte sans e-mail"
-        d["initiale"] = "?"
+    # Libellé affiché : nom d'affichage s'il existe, sinon e-mail, sinon repli.
+    from ..utils import label_compte
+    d["nom_affiche"] = label_compte(row)
+    d["initiale"] = (d["nom_affiche"][:1] or "?").upper()
     return d
 
 
@@ -227,6 +219,24 @@ def changer_mon_email():
           else "E-mail Google retiré : connexion par mot de passe uniquement.",
           "success")
     return redirect(url_for("accounts.parametres"))
+
+
+@bp.route("/api/comptes/<int:compte_id>/nom", methods=["POST"])
+@super_admin_required
+def renommer(compte_id: int):
+    """Définit (ou retire) le nom d'affichage d'un compte — pour ne pas montrer
+    l'e-mail brut dans les listes (assignation, calendrier…)."""
+    db = get_db()
+    c = get_compte(compte_id)
+    if c is None:
+        return redirect(url_for("accounts.comptes"))
+    nom = (request.form.get("nom") or "").strip() or None
+    db.execute("UPDATE comptes SET nom = ? WHERE id = ?", (nom, compte_id))
+    db.commit()
+    audit("renommer", _acteur(), c["email"] or f"compte {compte_id}")
+    flash("Nom d'affichage mis à jour ✓" if nom else "Nom d'affichage retiré.",
+          "success")
+    return redirect(url_for("accounts.comptes"))
 
 
 @bp.route("/api/comptes/<int:compte_id>/valider", methods=["POST"])

@@ -79,10 +79,11 @@ def course_detail(course_id: int):
     if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
         abort(403)
     from ..db import get_db
+    from ..utils import label_compte
     db = get_db()
-    cond = db.execute("SELECT email FROM comptes WHERE id = ?",
+    cond = db.execute("SELECT email, nom, role FROM comptes WHERE id = ?",
                       (course["conducteur_id"],)).fetchone()
-    crea = db.execute("SELECT email FROM comptes WHERE id = ?",
+    crea = db.execute("SELECT email, nom, role FROM comptes WHERE id = ?",
                       (course["createur_id"],)).fetchone()
     return render_template(
         "course_detail.html",
@@ -91,12 +92,28 @@ def course_detail(course_id: int):
         c=_course_view(course),
         statuts=[(code, C.STATUT_LABELS[code]) for code in C.STATUTS],
         habitue=bool(course["client_id"]),
-        conducteur_email=(cond["email"] if cond else None),
-        createur_email=(crea["email"] if crea else None),
+        conducteur_email=(label_compte(cond) if cond else None),
+        createur_email=(label_compte(crea) if crea else None),
         est_conducteur=(compte["id"] == course["conducteur_id"]),
         duree_fmt=maps.fmt_duree(course["duree_min"]),
         maps_enabled=maps.is_enabled(),
     )
+
+
+@bp.post("/course/<int:course_id>/supprimer")
+@login_required
+def course_supprimer(course_id: int):
+    """Supprime une course (créateur, conducteur assigné ou super-admin)."""
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if (compte["id"] not in (course["conducteur_id"], course["createur_id"])
+            and not is_super_admin()):
+        abort(403)
+    C.supprimer_course(course_id)
+    flash("Course supprimée.", "info")
+    return redirect(url_for("main.dashboard"))
 
 
 @bp.post("/course/<int:course_id>/estimer")
@@ -217,14 +234,15 @@ def api_creer_course():
         "client_id": _int_or_none(f.get("client_id")),
         "notes": (f.get("notes") or "").strip() or None,
     }
-    C.creer_course(data, compte["id"])
+    course_id = C.creer_course(data, compte["id"])
 
     # Notification push au conducteur assigné (jamais au créateur) — cahier §5/§6.5.
     # Titre + corps personnalisables (Paramètres → Notifications, super-admin).
+    # Le clic sur la notification ouvre directement la course concernée.
     from ..utils import notif_titre, notif_corps
     webpush.notifier_conducteur(
         conducteur_id, notif_titre(data), notif_corps(data),
-        url=url_for("main.dashboard"),
+        url=url_for("main.course_detail", course_id=course_id),
     )
     flash("Course créée et assignée ✓", "success")
     return redirect(url_for("main.dashboard"))

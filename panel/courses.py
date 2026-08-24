@@ -29,8 +29,8 @@ STATUT_LABELS = {
 def conducteurs_actifs() -> list:
     """Comptes actifs pouvant se voir assigner une course (super_admin inclus)."""
     return get_db().execute(
-        "SELECT id, email, role FROM comptes WHERE etat = 'actif' "
-        "ORDER BY (role = 'super_admin') DESC, email"
+        "SELECT id, email, nom, role FROM comptes WHERE etat = 'actif' "
+        "ORDER BY (role = 'super_admin') DESC, COALESCE(nom, email)"
     ).fetchall()
 
 
@@ -85,11 +85,17 @@ def courses_assignees(conducteur_id: int, a_venir: bool = False) -> list:
 def courses_creees(createur_id: int) -> list:
     """Toutes les courses saisies par un créateur, quel que soit l'assigné (§5)."""
     return get_db().execute(
-        "SELECT c.*, u.email AS conducteur_email "
+        "SELECT c.*, COALESCE(u.nom, u.email) AS conducteur_email "
         "FROM courses c LEFT JOIN comptes u ON u.id = c.conducteur_id "
         "WHERE c.createur_id = ? ORDER BY c.quand DESC",
         (createur_id,),
     ).fetchall()
+
+
+def supprimer_course(course_id: int) -> None:
+    db = get_db()
+    db.execute("DELETE FROM courses WHERE id = ?", (course_id,))
+    db.commit()
 
 
 def set_estimation(course_id: int, distance_km: float | None,

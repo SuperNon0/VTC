@@ -49,6 +49,11 @@
         <div class="acct-av">{{ c.initiale }}</div>
         <div class="acct-main">
           <span class="acct-mail">{{ c.nom_affiche }}</span>
+          {% if c.email and c.email != c.nom_affiche %}<span class="acct-sub" style="opacity:.7">{{ c.email }}</span>{% endif %}
+          <form method="post" action="{{ url_for('accounts.renommer', compte_id=c.id) }}" class="acct-rename">
+            <input type="text" name="nom" value="{{ c.nom or '' }}" placeholder="Nom d'affichage (ex. Noé)" class="tx-input">
+            <button class="btn ghost small">OK</button>
+          </form>
           <span class="acct-sub">
             {%- if c.id == moi_id %}toi · {% if c.mdp_hash %}connecté en local · {% endif %}créé le {{ c.cree_fmt }}
             {%- elif c.etat == 'bloque' %}bloqué {% if c.bloque_fmt %}le {{ c.bloque_fmt }}{% endif %}

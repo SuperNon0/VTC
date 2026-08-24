@@ -33,6 +33,8 @@ def create_app(config_object: type = Config) -> Flask:
     app.register_blueprint(main_bp)
 
     # --- Contexte de template partagé (marque + bandeau impersonation) ---
+    from .utils import label_compte as _label_compte
+
     @app.context_processor
     def inject_globals():
         from .auth import get_compte, is_super_admin
@@ -52,6 +54,7 @@ def create_app(config_object: type = Config) -> Flask:
             },
             "impersonation": impersonation,
             "is_super_admin": admin,
+            "nom_compte": _label_compte,
         }
 
     # --- Toutes les routes /api/* en no-store (spec §8) ---

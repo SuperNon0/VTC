@@ -109,7 +109,7 @@
         <option value="">— Choisir le conducteur —</option>
         {% for c in conducteurs %}
         <option value="{{ c.id }}" {{ 'selected' if c.id == compte['id'] else '' }}>
-          {{ c.email or 'super-admin' }}{% if c.id == compte['id'] %} (moi){% endif %}{% if c.role == 'super_admin' %} · admin{% endif %}
+          {{ nom_compte(c) }}{% if c.id == compte['id'] %} (moi){% endif %}{% if is_super_admin and c.role == 'super_admin' %} · admin{% endif %}
         </option>
         {% endfor %}
       </select>

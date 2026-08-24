@@ -172,11 +172,12 @@ def notifications():
                          DEFAULT_NOTIF_BODY, notif_title_template,
                          notif_body_template)
     from .. import webpush
+    from ..utils import label_compte
     conducteurs = []
     for c in C.conducteurs_actifs():
         conducteurs.append({
             "id": c["id"],
-            "email": c["email"] or "super-admin (accès local)",
+            "email": label_compte(c),
             "abonne": webpush.compte_a_des_souscriptions(c["id"]),
         })
     return render_template(
@@ -224,7 +225,8 @@ def notifications_test():
     if cible is None:
         flash("Conducteur introuvable.", "error")
         return redirect(url_for("config.notifications"))
-    nom = cible["email"] or "super-admin"
+    from ..utils import label_compte
+    nom = label_compte(cible)
     if not webpush.is_available():
         flash("Web Push indisponible côté serveur (dépendances manquantes).", "error")
         return redirect(url_for("config.notifications"))
