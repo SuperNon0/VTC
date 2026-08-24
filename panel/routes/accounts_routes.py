@@ -58,12 +58,14 @@ def _acteur() -> str:
 def parametres():
     # Compte super-admin réel (jamais l'identité impersonnée).
     moi = get_compte(session.get("impersonator_id") or session.get("compte_id"))
+    from ..maps import is_enabled as maps_enabled
     return render_template(
         "parametres.html",
         has_password=bool(moi and moi["mdp_hash"]),
         impersonating=bool(session.get("impersonator_id")),
         cf=cf_config(),
         diag=cf_diagnostic(),
+        maps_enabled=maps_enabled(),
     )
 
 

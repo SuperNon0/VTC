@@ -15,6 +15,7 @@ from flask import (Blueprint, Response, abort, flash, jsonify, redirect,
                    render_template, request, url_for)
 
 from .. import courses as C
+from .. import maps
 from .. import webpush
 from ..ai import AIError, extract_course_info, is_configured as ai_configured
 from ..auth import current_compte, is_super_admin, login_required
@@ -93,7 +94,31 @@ def course_detail(course_id: int):
         conducteur_email=(cond["email"] if cond else None),
         createur_email=(crea["email"] if crea else None),
         est_conducteur=(compte["id"] == course["conducteur_id"]),
+        duree_fmt=maps.fmt_duree(course["duree_min"]),
+        maps_enabled=maps.is_enabled(),
     )
+
+
+@bp.post("/course/<int:course_id>/estimer")
+@login_required
+def course_estimer(course_id: int):
+    """(Re)calcule l'estimation de trajet d'une course via OpenStreetMap."""
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        return jsonify(ok=False, error="introuvable"), 404
+    if compte["id"] not in (course["conducteur_id"], course["createur_id"]):
+        return jsonify(ok=False, error="non autorisé"), 403
+    if not (course["depart"] and course["arrivee"]):
+        return jsonify(ok=False, error="départ et arrivée requis"), 400
+    est = maps.estimate(course["depart"], course["arrivee"])
+    if not est:
+        return jsonify(ok=False,
+                       error="Estimation indisponible (adresse introuvable ou "
+                             "service injoignable)."), 502
+    C.set_estimation(course_id, est["distance_km"], est["duree_min"])
+    return jsonify(ok=True, distance_km=est["distance_km"],
+                   duree_min=est["duree_min"], duree_fmt=maps.fmt_duree(est["duree_min"]))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -103,13 +128,21 @@ def course_detail(course_id: int):
 @login_required
 def nouvelle_course():
     compte = current_compte()
+    lieux = C.liste_lieux()
+    tarifs = C.liste_tarifs()
     return render_template(
         "nouvelle_course.html",
         compte=compte,
         is_super_admin=is_super_admin(),
         conducteurs=C.conducteurs_actifs(),
-        lieux=C.liste_lieux(),
-        tarifs=C.liste_tarifs(),
+        lieux=lieux,
+        tarifs=tarifs,
+        # Données pour l'autocomplétion des lieux + l'auto-sélection du tarif.
+        lieux_json=[{"id": l["id"], "nom": l["nom"], "adresse": l["adresse"] or ""}
+                    for l in lieux],
+        tarifs_json=[{"id": t["id"], "prix": t["prix"],
+                      "dep": t["lieu_depart_id"], "arr": t["lieu_arrivee_id"]}
+                     for t in tarifs],
         ai_on=ai_configured(),
     )
 
@@ -152,16 +185,27 @@ def api_creer_course():
     # Prix : soit une grille tarifaire, soit « Autre » (prix libre) — cahier §6.3.
     prix, prix_source, tarif_id = _resoudre_prix(f)
 
+    depart = (f.get("depart") or "").strip() or None
+    arrivee = (f.get("arrivee") or "").strip() or None
+
+    # Estimation du trajet (durée + distance) via OpenStreetMap — best-effort.
+    distance_km = duree_min = None
+    if depart and arrivee:
+        est = maps.estimate(depart, arrivee)
+        if est:
+            distance_km, duree_min = est["distance_km"], est["duree_min"]
+
     data = {
         "client_nom": (f.get("client_nom") or "").strip() or None,
         "client_tel": (f.get("client_tel") or "").strip() or None,
-        "depart": (f.get("depart") or "").strip() or None,
-        "arrivee": (f.get("arrivee") or "").strip() or None,
+        "depart": depart,
+        "arrivee": arrivee,
         "quand": quand,
         "prix": prix,
         "prix_source": prix_source,
         "tarif_id": tarif_id,
-        "distance_km": None,  # réservé à l'évolution « prix par distance » (§6.3)
+        "distance_km": distance_km,
+        "duree_min": duree_min,
         "statut": "a_faire",
         "conducteur_id": conducteur_id,
         "client_id": _int_or_none(f.get("client_id")),
@@ -189,6 +233,14 @@ def _resume_course(data: dict) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Courses que j'ai créées (vue créateur, distincte du calendrier) — cahier §5
 # ─────────────────────────────────────────────────────────────────────────────
+@bp.route("/plus")
+@login_required
+def plus():
+    """Menu « Plus » : accès secondaires (stats, lieux, paramètres, déconnexion)."""
+    return render_template(
+        "plus.html", compte=current_compte(), is_super_admin=is_super_admin())
+
+
 @bp.route("/mes-courses")
 @login_required
 def mes_courses():

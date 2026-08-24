@@ -41,10 +41,21 @@ dans `PROVIDERS` + `DEFAULTS` + `PROVIDER_LABELS`.
 
 - collage d'un message client → bouton **Extraire** (si IA configurée) ;
 - **autocomplétion clients** (habitués) via `/api/clients/search` ;
-- **boutons de lieux fréquents** sous départ et arrivée (présélection rapide,
-  saisie libre toujours possible) ;
-- **prix** : liste des grilles tarifaires + option **« Autre »** (prix libre).
-  Structure prête pour un futur mode `'distance'` (§6.3) sans refonte.
+- **lieux tapés** : départ et arrivée s'autocomplètent depuis les lieux
+  configurés (taper « gare aigues-mortes » propose le lieu ; le choisir remplit
+  l'adresse enregistrée). Saisie libre toujours possible. Les lieux et les
+  tarifs sont embarqués en JSON dans la page (pas d'aller-retour serveur).
+- **prix auto** : si le départ ET l'arrivée correspondent à un tarif
+  place-à-place, ce tarif est **sélectionné automatiquement** (modifiable) ;
+  l'option **« Autre »** (prix libre) reste toujours disponible.
+
+### Grilles tarifaires place-à-place (cahier §6.3)
+
+Un tarif relie un **lieu de départ** à un **lieu d'arrivée** (`lieu_depart_id` /
+`lieu_arrivee_id`, l'un des deux peut être vide pour un forfait à sens unique).
+Le libellé est **généré** (« Départ → Arrivée ») — pas de saisie en double. Le
+champ « concurrent » a été retiré (inutile). L'auto-sélection compare les lieux
+choisis du départ/arrivée aux tarifs (score : deux côtés > un côté).
 
 ## Assignation & notifications (cahier §6.5)
 
@@ -82,8 +93,9 @@ substitution `[clé] → valeur`), modèles stockés dans `app_settings`
 (`cal_title_template`, `cal_notes_template`) ; vide = valeur par défaut.
 
 Placeholders : `[nom]`, `[telephone]`, `[depart]`, `[arrivee]`, `[prix]`,
-`[date]`, `[statut]`, `[habitue]` (« Habitué » si la course est liée à un client
-enregistré, sinon « Nouveau client »), `[notes]`.
+`[date]`, `[duree]` (durée de trajet estimée), `[statut]`, `[habitue]`
+(« Habitué » si la course est liée à un client enregistré, sinon « Nouveau
+client »), `[notes]`.
 
 Valeurs par défaut :
 
@@ -103,6 +115,29 @@ Pour modifier : ouvrir *Paramètres → Modèle calendrier*, cliquer un placehol
 pour l'insérer (ou le taper à la main, ex. `Prix : [prix]`), vérifier l'aperçu,
 *Enregistrer*. *Réinitialiser* rétablit les valeurs par défaut. Un placeholder
 sans valeur pour une course donnée devient une chaîne vide.
+
+## Estimation du temps de trajet (OpenStreetMap)
+
+[`panel/maps.py`](../panel/maps.py) : à la création d'une course, si le départ et
+l'arrivée sont renseignés, on estime **durée + distance** via **Nominatim**
+(géocodage) puis **OSRM** (itinéraire voiture) — services publics **gratuits,
+sans clé**. Résultat stocké dans `courses.duree_min` / `courses.distance_km`,
+affiché sur la page détail (bouton **↻ Estimer** pour recalculer,
+`POST /course/<id>/estimer`) et exploitable via le placeholder `[duree]`.
+
+Best-effort : ne bloque jamais la création (réseau injoignable, adresse non
+géocodée → simplement pas d'estimation). Activable/désactivable par le
+super-admin (*Paramètres*, clé `maps_enabled`). Respecte la politique Nominatim
+(User-Agent explicite, faible volume).
+
+## Navigation (barre du bas)
+
+Navigation mobile-first : une **barre d'onglets fixe en bas**
+([`base.html`](../panel/templates/base.html)) — Accueil (calendrier), Courses
+(mes courses créées), bouton central **+** (nouvelle course), Clients, et
+**Plus** ([`plus.html`](../panel/templates/plus.html)) qui regroupe stats,
+lieux, et pour le super-admin les réglages + la déconnexion. Icônes SVG inline
+(aucune police externe), onglet actif en doré.
 
 ## Statistiques (cahier §6.7 — différé)
 

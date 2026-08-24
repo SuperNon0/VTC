@@ -120,19 +120,21 @@ def calendrier_save():
 @bp.route("/parametres/tarifs")
 @super_admin_required
 def tarifs():
-    return render_template("config_tarifs.html", tarifs=C.liste_tarifs())
+    return render_template("config_tarifs.html",
+                           tarifs=C.liste_tarifs(), lieux=C.liste_lieux())
 
 
 @bp.route("/parametres/tarifs/ajouter", methods=["POST"])
 @super_admin_required
 def tarif_ajouter():
-    libelle = (request.form.get("libelle") or "").strip()
     prix = _parse_prix(request.form.get("prix"))
-    concurrent = (request.form.get("concurrent") or "").strip() or None
-    if not libelle or prix is None:
-        flash("Libellé et prix valides requis.", "error")
+    dep = _int_or_none(request.form.get("lieu_depart_id"))
+    arr = _int_or_none(request.form.get("lieu_arrivee_id"))
+    if prix is None or (dep is None and arr is None):
+        flash("Choisis au moins un lieu (départ et/ou arrivée) et un prix valide.",
+              "error")
         return redirect(url_for("config.tarifs"))
-    C.creer_tarif(libelle, prix, concurrent)
+    C.creer_tarif(prix, dep, arr)
     flash("Grille tarifaire ajoutée ✓", "success")
     return redirect(url_for("config.tarifs"))
 
@@ -140,13 +142,14 @@ def tarif_ajouter():
 @bp.route("/parametres/tarifs/<int:tarif_id>/modifier", methods=["POST"])
 @super_admin_required
 def tarif_modifier(tarif_id: int):
-    libelle = (request.form.get("libelle") or "").strip()
     prix = _parse_prix(request.form.get("prix"))
-    concurrent = (request.form.get("concurrent") or "").strip() or None
-    if not libelle or prix is None:
-        flash("Libellé et prix valides requis.", "error")
+    dep = _int_or_none(request.form.get("lieu_depart_id"))
+    arr = _int_or_none(request.form.get("lieu_arrivee_id"))
+    if prix is None or (dep is None and arr is None):
+        flash("Choisis au moins un lieu (départ et/ou arrivée) et un prix valide.",
+              "error")
         return redirect(url_for("config.tarifs"))
-    C.maj_tarif(tarif_id, libelle, prix, concurrent)
+    C.maj_tarif(tarif_id, prix, dep, arr)
     flash("Grille tarifaire mise à jour ✓", "success")
     return redirect(url_for("config.tarifs"))
 
@@ -157,6 +160,18 @@ def tarif_supprimer(tarif_id: int):
     C.supprimer_tarif(tarif_id)
     flash("Grille tarifaire supprimée.", "info")
     return redirect(url_for("config.tarifs"))
+
+
+@bp.route("/parametres/estimation", methods=["POST"])
+@super_admin_required
+def estimation_toggle():
+    """Active/désactive l'estimation de trajet OpenStreetMap (super-admin)."""
+    if session.get("impersonator_id"):
+        flash("Reviens à ton compte pour modifier ce réglage.", "error")
+        return redirect(url_for("accounts.parametres"))
+    set_setting("maps_enabled", "1" if request.form.get("maps_enabled") else "0")
+    flash("Réglage d'estimation de trajet enregistré.", "success")
+    return redirect(url_for("accounts.parametres"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -252,6 +267,13 @@ def _parse_prix(v):
     v = (v or "").strip().replace(",", ".")
     try:
         return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_none(v):
+    try:
+        return int(v)
     except (TypeError, ValueError):
         return None
 

@@ -2,6 +2,13 @@
 {% block title %}Grilles tarifaires — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}tarifs{% endblock %}
 
+{% macro lieu_options(lieux, selected) -%}
+  <option value="">— Aucun —</option>
+  {% for l in lieux %}
+  <option value="{{ l.id }}" {{ 'selected' if selected == l.id else '' }}>{{ l.nom }}</option>
+  {% endfor %}
+{%- endmacro %}
+
 {% block content %}
 <div class="acct-wrap" style="max-width:640px">
   <div style="margin-bottom:14px">
@@ -11,28 +18,35 @@
   <section class="acct-section">
     <h3>Grilles tarifaires</h3>
     <p class="access-note" style="text-align:left;margin:0 0 12px">
-      Prix de base préenregistrés, proposés lors de la création d'une course. Une
-      option « Autre » (prix libre) reste toujours disponible dans le formulaire.
-      La fourchette concurrents est purement indicative et saisie à la main.
+      Un tarif relie un <b>lieu de départ</b> à un <b>lieu d'arrivée</b> (les lieux
+      se configurent dans « Lieux fréquents »). À la création d'une course, si le
+      départ et l'arrivée correspondent, le tarif est <b>sélectionné
+      automatiquement</b>. Une option « Autre » (prix libre) reste toujours
+      disponible dans le formulaire.
     </p>
 
+    {% if not lieux %}
+    <div class="fl-card" style="text-align:center">
+      <p class="access-text" style="margin:0">Ajoute d'abord des
+        <a href="{{ url_for('config.lieux') }}">lieux fréquents</a> pour créer des tarifs.</p>
+    </div>
+    {% else %}
     <div class="fl-card" style="margin-bottom:16px">
       <form method="post" action="{{ url_for('config.tarif_ajouter') }}"
             style="display:flex;flex-direction:column;gap:10px">
-        <div>
-          <label class="fl-label" for="libelle">Libellé</label>
-          <input class="tx-input" type="text" name="libelle" id="libelle"
-                 placeholder="Ex : Gare du Grau-du-Roi → centre ville" required>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px">
+            <label class="fl-label">Départ</label>
+            <select class="tx-input" name="lieu_depart_id">{{ lieu_options(lieux, none) }}</select>
+          </div>
+          <div style="flex:1;min-width:150px">
+            <label class="fl-label">Arrivée</label>
+            <select class="tx-input" name="lieu_arrivee_id">{{ lieu_options(lieux, none) }}</select>
+          </div>
         </div>
-        <div style="display:flex;gap:10px">
-          <div style="flex:1">
-            <label class="fl-label" for="prix">Prix (€)</label>
-            <input class="tx-input" type="text" inputmode="decimal" name="prix" id="prix" placeholder="15.00" required>
-          </div>
-          <div style="flex:1">
-            <label class="fl-label" for="concurrent">Concurrents (indicatif)</label>
-            <input class="tx-input" type="text" name="concurrent" id="concurrent" placeholder="Uber ~18-22 €">
-          </div>
+        <div>
+          <label class="fl-label" for="prix">Prix (€)</label>
+          <input class="tx-input" type="text" inputmode="decimal" name="prix" id="prix" placeholder="15.00" required>
         </div>
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn primary">Ajouter</button>
@@ -46,13 +60,22 @@
 
     {% for t in tarifs %}
     <div class="fl-card" style="margin-bottom:10px">
+      <div class="fl-title-serif" style="font-size:1.05rem;margin-bottom:.5rem">
+        {{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €
+      </div>
       <form method="post" action="{{ url_for('config.tarif_modifier', tarif_id=t.id) }}"
             style="display:flex;flex-direction:column;gap:8px">
-        <input class="tx-input" type="text" name="libelle" value="{{ t.libelle }}" required>
-        <div style="display:flex;gap:8px">
-          <input class="tx-input" style="flex:1" type="text" inputmode="decimal" name="prix" value="{{ '%.2f'|format(t.prix) }}" required>
-          <input class="tx-input" style="flex:1" type="text" name="concurrent" value="{{ t.concurrent or '' }}" placeholder="concurrents (indicatif)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label class="fl-label">Départ</label>
+            <select class="tx-input" name="lieu_depart_id">{{ lieu_options(lieux, t.lieu_depart_id) }}</select>
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label class="fl-label">Arrivée</label>
+            <select class="tx-input" name="lieu_arrivee_id">{{ lieu_options(lieux, t.lieu_arrivee_id) }}</select>
+          </div>
         </div>
+        <input class="tx-input" type="text" inputmode="decimal" name="prix" value="{{ '%.2f'|format(t.prix) }}" required>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button type="submit" class="btn ghost small">Enregistrer</button>
         </div>
@@ -63,6 +86,7 @@
       </form>
     </div>
     {% endfor %}
+    {% endif %}
   </section>
 </div>
 {% endblock %}

@@ -70,12 +70,18 @@ CREATE TABLE IF NOT EXISTS lieux (
 );
 
 -- Grilles tarifaires de base (cahier §6.3), gérées par le super-admin.
+-- Un tarif relie un lieu de départ à un lieu d'arrivée (l'un des deux peut être
+-- vide pour un forfait à sens unique) : cela permet la sélection AUTOMATIQUE du
+-- tarif quand le départ et l'arrivée d'une course correspondent.
 CREATE TABLE IF NOT EXISTS tarifs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    libelle    TEXT NOT NULL,   -- ex : « Gare Grau-du-Roi → centre ville »
-    prix       REAL NOT NULL,
-    concurrent TEXT,            -- fourchette concurrents indicative, saisie à la main
-    ordre      INTEGER NOT NULL DEFAULT 0
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    libelle         TEXT NOT NULL,   -- généré : « Départ → Arrivée »
+    prix            REAL NOT NULL,
+    lieu_depart_id  INTEGER,         -- lieu de départ (optionnel)
+    lieu_arrivee_id INTEGER,         -- lieu d'arrivée (optionnel)
+    ordre           INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (lieu_depart_id)  REFERENCES lieux(id) ON DELETE SET NULL,
+    FOREIGN KEY (lieu_arrivee_id) REFERENCES lieux(id) ON DELETE SET NULL
 );
 
 -- Courses (cahier §5). Créateur ≠ conducteur assigné.
@@ -89,7 +95,8 @@ CREATE TABLE IF NOT EXISTS courses (
     prix           REAL,
     prix_source    TEXT,         -- 'grille' | 'autre' | 'distance' (évolution §6.3)
     tarif_id       INTEGER,      -- grille choisie, le cas échéant
-    distance_km    REAL,         -- réservé à la suggestion par distance (§6.3, différé)
+    distance_km    REAL,         -- distance estimée du trajet (km), via OSM
+    duree_min      INTEGER,      -- durée estimée du trajet (minutes), via OSM
     statut         TEXT NOT NULL DEFAULT 'a_faire',  -- a_faire|en_cours|terminee|annulee
     createur_id    INTEGER NOT NULL,   -- compte qui a saisi la course
     conducteur_id  INTEGER NOT NULL,   -- compte assigné (base de l'affichage/notif/stats)
@@ -154,7 +161,25 @@ def init_db() -> None:
     db = get_db()
     db.executescript(SCHEMA)
     db.commit()
+    _migrate(db)
     _seed_superadmin(db)
+
+
+def _migrate(db: sqlite3.Connection) -> None:
+    """Ajoute les colonnes manquantes sur les bases déjà créées (idempotent)."""
+    def cols(table: str) -> set:
+        return {r["name"] for r in db.execute(f"PRAGMA table_info({table})")}
+
+    tarifs = cols("tarifs")
+    if "lieu_depart_id" not in tarifs:
+        db.execute("ALTER TABLE tarifs ADD COLUMN lieu_depart_id INTEGER")
+    if "lieu_arrivee_id" not in tarifs:
+        db.execute("ALTER TABLE tarifs ADD COLUMN lieu_arrivee_id INTEGER")
+
+    courses = cols("courses")
+    if "duree_min" not in courses:
+        db.execute("ALTER TABLE courses ADD COLUMN duree_min INTEGER")
+    db.commit()
 
 
 def _seed_superadmin(db: sqlite3.Connection) -> None:

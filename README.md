@@ -43,8 +43,13 @@ Construite sur le template `SuperNon0/site` (thème « RecipeLog » + auth
   sans redéploiement.
 - 🔔 **Notifications Web Push (PWA)** — alerte à chaque course assignée. Android
   via Chrome ; iPhone (iOS 16.4+) après ajout à l'écran d'accueil.
-- 💶 **Grilles tarifaires** — prix de base préenregistrés (super-admin).
-- 📍 **Lieux fréquents** — liste **collaborative**, complétée par tout conducteur.
+- 💶 **Grilles tarifaires place-à-place** — un prix par trajet (lieu départ →
+  lieu arrivée). **Sélection automatique** du tarif quand le départ et l'arrivée
+  d'une course correspondent (super-admin gère les prix).
+- 📍 **Lieux fréquents** — liste **collaborative** ; tape « gare… » dans une
+  adresse pour la remplir automatiquement.
+- 🗺️ **Estimation du trajet** — durée + distance via OpenStreetMap (gratuit, sans clé).
+- 📱 **Navigation en bas** — barre d'onglets fixe (Accueil · Courses · + · Clients · Plus).
 - 👤 **Clients habitués** — base recherchable, retrouvés à la création d'une course.
 - 📆 **Export calendrier natif** — bouton « Agenda » : `.ics` sur iPhone, lien
   Google Agenda sur Android. **Titre + notes personnalisables** avec des
@@ -159,6 +164,7 @@ Clique un placeholder pour l'insérer, vérifie l'**aperçu en direct**, puis
 | **Grilles tarifaires** | ❌ | ✅ |
 | **Extraction IA** (fournisseur + clé) | ❌ | ✅ |
 | **Modèle d'export calendrier** | ❌ | ✅ |
+| **Estimation de trajet** (activer/désactiver) | ❌ | ✅ |
 | **Comptes** (valider, bloquer, « voir en tant que ») | ❌ | ✅ |
 | **Mise à jour** du site, réglages Cloudflare | ❌ | ✅ |
 

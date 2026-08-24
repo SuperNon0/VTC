@@ -38,6 +38,15 @@
       <div class="fl-label">Prix</div>
       <div>{% if c.prix is not none %}<b class="tx-prix" style="font-size:1rem">{{ '%.2f'|format(c.prix) }} €</b>{% else %}<span class="tx-muted">—</span>{% endif %}</div>
 
+      <div class="fl-label">Trajet estimé</div>
+      <div id="estim-box">
+        {% if c.duree_min %}<b id="estim-txt">≈ {{ duree_fmt }}{% if c.distance_km %} · {{ '%.1f'|format(c.distance_km) }} km{% endif %}</b>
+        {% else %}<span class="tx-muted" id="estim-txt">non estimé</span>{% endif %}
+        {% if maps_enabled %}
+        <button type="button" class="btn ghost small" style="margin-left:.5rem" id="estim-btn" onclick="estimer({{ c.id }})">↻ Estimer</button>
+        {% endif %}
+      </div>
+
       <div class="fl-label">Conducteur assigné</div>
       <div>{{ conducteur_email or 'moi' }}{% if est_conducteur %} <span class="tx-muted">(moi)</span>{% endif %}</div>
 
@@ -92,6 +101,19 @@ function isIOS() {
 }
 function addToCalendar(id) {
   window.location.href = isIOS() ? '/course/' + id + '/ics' : '/course/' + id + '/google';
+}
+async function estimer(id) {
+  var btn = document.getElementById('estim-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    var r = await fetch('/course/' + id + '/estimer', { method: 'POST', credentials: 'same-origin' });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok || !j.ok) { toast(j.error || 'Estimation indisponible', true); return; }
+    var txt = '≈ ' + j.duree_fmt + (j.distance_km ? ' · ' + j.distance_km + ' km' : '');
+    document.getElementById('estim-txt').outerHTML = '<b id="estim-txt">' + txt + '</b>';
+    toast('Trajet estimé ✓');
+  } catch (e) { toast('Erreur : ' + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = '↻ Estimer'; }
 }
 async function majStatut(id, statut) {
   var body = new URLSearchParams({ statut: statut });

@@ -38,6 +38,7 @@ CAL_PLACEHOLDERS = {
     "arrivee": "Lieu de dépose",
     "prix": "Prix (ex : 15.00 €)",
     "date": "Date et heure",
+    "duree": "Durée de trajet estimée (ex : 25 min)",
     "statut": "Statut de la course",
     "habitue": "« Habitué » ou « Nouveau client »",
     "notes": "Notes libres de la course",
@@ -54,6 +55,7 @@ DEFAULT_CAL_NOTES = (
     "Arrivée : [arrivee]\n"
     "Prix : [prix]\n"
     "Date : [date]\n"
+    "Trajet estimé : [duree]\n"
     "Notes : [notes]"
 )
 
@@ -65,6 +67,7 @@ def _utc_stamp(ts: int) -> str:
 def _cal_values(course) -> dict:
     """Valeurs concrètes des placeholders pour une course donnée."""
     from .courses import STATUT_LABELS  # import tardif : évite tout couplage
+    from .maps import fmt_duree
     prix = f"{course['prix']:.2f} €" if course["prix"] is not None else ""
     return {
         "nom": (course["client_nom"] or "").strip(),
@@ -73,6 +76,7 @@ def _cal_values(course) -> dict:
         "arrivee": (course["arrivee"] or "").strip(),
         "prix": prix,
         "date": fmt_dt(course["quand"]),
+        "duree": fmt_duree(course["duree_min"]),
         "statut": STATUT_LABELS.get(course["statut"], course["statut"] or ""),
         "habitue": "Habitué" if course["client_id"] else "Nouveau client",
         "notes": (course["notes"] or "").strip(),

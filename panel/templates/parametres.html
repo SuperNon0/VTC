@@ -74,6 +74,15 @@
           (titre + notes de l'événement, avec placeholders).</span>
         <a class="btn ghost small" href="{{ url_for('config.calendrier') }}">Modèle calendrier</a>
       </div>
+      <form method="post" action="{{ url_for('config.estimation_toggle') }}"
+            style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0">
+        <span class="access-text" style="text-align:left;margin:0">Estimation du temps de trajet
+          (via OpenStreetMap, gratuit). Calculée à la création d'une course.</span>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" name="maps_enabled" value="1" {{ 'checked' if maps_enabled else '' }} onchange="this.form.submit()">
+          <span class="access-text" style="margin:0">{{ 'Activée' if maps_enabled else 'Désactivée' }}</span>
+        </label>
+      </form>
     </div>
   </section>
 

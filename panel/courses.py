@@ -43,14 +43,15 @@ def creer_course(data: dict, createur_id: int) -> int:
     cur = db.execute(
         """INSERT INTO courses
            (client_nom, client_tel, depart, arrivee, quand, prix, prix_source,
-            tarif_id, distance_km, statut, createur_id, conducteur_id, client_id,
-            notes, cree, maj)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            tarif_id, distance_km, duree_min, statut, createur_id, conducteur_id,
+            client_id, notes, cree, maj)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             data.get("client_nom"), data.get("client_tel"),
             data.get("depart"), data.get("arrivee"), data.get("quand"),
             data.get("prix"), data.get("prix_source"), data.get("tarif_id"),
-            data.get("distance_km"), data.get("statut", "a_faire"),
+            data.get("distance_km"), data.get("duree_min"),
+            data.get("statut", "a_faire"),
             createur_id, data["conducteur_id"], data.get("client_id"),
             data.get("notes"), now, now,
         ),
@@ -88,6 +89,17 @@ def courses_creees(createur_id: int) -> list:
         "WHERE c.createur_id = ? ORDER BY c.quand DESC",
         (createur_id,),
     ).fetchall()
+
+
+def set_estimation(course_id: int, distance_km: float | None,
+                   duree_min: int | None) -> None:
+    """Enregistre l'estimation de trajet (distance + durée) d'une course."""
+    db = get_db()
+    db.execute(
+        "UPDATE courses SET distance_km = ?, duree_min = ?, maj = ? WHERE id = ?",
+        (distance_km, duree_min, int(time.time()), course_id),
+    )
+    db.commit()
 
 
 def set_statut(course_id: int, statut: str) -> bool:
@@ -164,32 +176,62 @@ def client_adresses(row) -> list:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Grilles tarifaires (cahier §6.3)
+# Grilles tarifaires (cahier §6.3) — reliées à des lieux (départ → arrivée)
 # ─────────────────────────────────────────────────────────────────────────────
+def _nom_lieu(lieu_id: int | None) -> str | None:
+    if not lieu_id:
+        return None
+    row = get_db().execute("SELECT nom FROM lieux WHERE id = ?", (lieu_id,)).fetchone()
+    return row["nom"] if row else None
+
+
+def _libelle_tarif(lieu_depart_id: int | None, lieu_arrivee_id: int | None) -> str:
+    """Libellé auto d'un tarif à partir des lieux (évite la saisie en double)."""
+    dep = _nom_lieu(lieu_depart_id)
+    arr = _nom_lieu(lieu_arrivee_id)
+    if dep and arr:
+        return f"{dep} → {arr}"
+    if arr:
+        return f"→ {arr}"
+    if dep:
+        return f"{dep} → …"
+    return "Tarif"
+
+
 def liste_tarifs() -> list:
+    """Tarifs avec les noms de lieux résolus (pour l'affichage et l'auto-match)."""
     return get_db().execute(
-        "SELECT * FROM tarifs ORDER BY ordre, libelle"
+        "SELECT t.*, ld.nom AS depart_nom, la.nom AS arrivee_nom "
+        "FROM tarifs t "
+        "LEFT JOIN lieux ld ON ld.id = t.lieu_depart_id "
+        "LEFT JOIN lieux la ON la.id = t.lieu_arrivee_id "
+        "ORDER BY t.ordre, t.libelle"
     ).fetchall()
 
 
-def creer_tarif(libelle: str, prix: float, concurrent: str | None) -> int:
+def creer_tarif(prix: float, lieu_depart_id: int | None,
+                lieu_arrivee_id: int | None) -> int:
     db = get_db()
     ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM tarifs")
              .fetchone()[0])
+    libelle = _libelle_tarif(lieu_depart_id, lieu_arrivee_id)
     cur = db.execute(
-        "INSERT INTO tarifs (libelle, prix, concurrent, ordre) VALUES (?, ?, ?, ?)",
-        (libelle, prix, concurrent, ordre),
+        "INSERT INTO tarifs (libelle, prix, lieu_depart_id, lieu_arrivee_id, ordre) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (libelle, prix, lieu_depart_id, lieu_arrivee_id, ordre),
     )
     db.commit()
     return cur.lastrowid
 
 
-def maj_tarif(tarif_id: int, libelle: str, prix: float,
-              concurrent: str | None) -> None:
+def maj_tarif(tarif_id: int, prix: float, lieu_depart_id: int | None,
+              lieu_arrivee_id: int | None) -> None:
     db = get_db()
+    libelle = _libelle_tarif(lieu_depart_id, lieu_arrivee_id)
     db.execute(
-        "UPDATE tarifs SET libelle = ?, prix = ?, concurrent = ? WHERE id = ?",
-        (libelle, prix, concurrent, tarif_id),
+        "UPDATE tarifs SET libelle = ?, prix = ?, lieu_depart_id = ?, "
+        "lieu_arrivee_id = ? WHERE id = ?",
+        (libelle, prix, lieu_depart_id, lieu_arrivee_id, tarif_id),
     )
     db.commit()
 
