@@ -206,9 +206,14 @@ def _seed_superadmin(db: sqlite3.Connection) -> None:
         return
 
     now = int(time.time())
+    # Insertion ATOMIQUE et conditionnelle : sous gunicorn (plusieurs workers),
+    # deux processus peuvent amorcer en même temps. SQLite sérialise les
+    # écritures, donc le `WHERE NOT EXISTS` garantit un seul super-admin même en
+    # cas de course (sinon on obtenait deux super-admins au premier démarrage).
     db.execute(
         "INSERT INTO comptes (email, role, etat, mdp_hash, cree, valide) "
-        "VALUES (?, 'super_admin', 'actif', ?, ?, ?)",
+        "SELECT ?, 'super_admin', 'actif', ?, ?, ? "
+        "WHERE NOT EXISTS (SELECT 1 FROM comptes WHERE role = 'super_admin')",
         (email, generate_password_hash(password) if password else None, now, now),
     )
     db.commit()

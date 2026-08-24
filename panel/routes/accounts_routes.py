@@ -30,6 +30,18 @@ def _row_to_view(row) -> dict:
     d["cree_fmt"] = fmt_dt(row["cree"], with_time=False)
     d["derniere_cnx_fmt"] = fmt_dt(row["derniere_cnx"])
     d["bloque_fmt"] = fmt_dt(row["bloque"], with_time=False)
+    # Libellé affiché : l'e-mail s'il existe, sinon un intitulé lisible (un
+    # super-admin en login local n'a pas forcément d'e-mail Google).
+    email = (row["email"] or "").strip()
+    if email:
+        d["nom_affiche"] = email
+        d["initiale"] = email[0].upper()
+    elif row["role"] == "super_admin":
+        d["nom_affiche"] = "Super-admin (accès local)"
+        d["initiale"] = "A"
+    else:
+        d["nom_affiche"] = "Compte sans e-mail"
+        d["initiale"] = "?"
     return d
 
 
@@ -44,7 +56,10 @@ def comptes():
         "ORDER BY (role = 'super_admin') DESC, email").fetchall()]
     # id du super-admin réel (même en impersonation) pour marquer « toi ».
     moi_id = session.get("impersonator_id") or session.get("compte_id")
-    return render_template("comptes.html", pending=pending, membres=membres, moi_id=moi_id)
+    nb_super_admins = db.execute(
+        "SELECT COUNT(*) FROM comptes WHERE role = 'super_admin'").fetchone()[0]
+    return render_template("comptes.html", pending=pending, membres=membres,
+                           moi_id=moi_id, nb_super_admins=nb_super_admins)
 
 
 def _acteur() -> str:
@@ -240,14 +255,24 @@ def supprimer(compte_id: int):
     c = get_compte(compte_id)
     if c is None:
         return redirect(url_for("accounts.comptes"))
-    # Le dernier super-admin est indestructible (spec §9.3).
+    moi_id = session.get("impersonator_id") or session.get("compte_id")
     if c["role"] == "super_admin":
-        flash("Impossible de supprimer un super-admin.", "error")
-        return redirect(url_for("accounts.comptes"))
+        # On ne se supprime jamais soi-même…
+        if c["id"] == moi_id:
+            flash("Tu ne peux pas supprimer ton propre compte super-admin.", "error")
+            return redirect(url_for("accounts.comptes"))
+        # …et le DERNIER super-admin reste indestructible (spec §9.3). En
+        # revanche, un super-admin en double peut être supprimé s'il en reste
+        # au moins un autre (utile pour nettoyer un doublon d'amorçage).
+        nb = db.execute(
+            "SELECT COUNT(*) FROM comptes WHERE role = 'super_admin'").fetchone()[0]
+        if nb <= 1:
+            flash("Impossible de supprimer le dernier super-admin.", "error")
+            return redirect(url_for("accounts.comptes"))
     db.execute("DELETE FROM comptes WHERE id = ?", (compte_id,))
     db.commit()
-    audit("supprimer", _acteur(), c["email"])
-    flash(f"{c['email']} a été supprimé.", "info")
+    audit("supprimer", _acteur(), c["email"] or "super-admin (sans e-mail)")
+    flash(f"{c['email'] or 'Le super-admin en double'} a été supprimé.", "info")
     return redirect(url_for("accounts.comptes"))
 
 

@@ -14,9 +14,9 @@
     <div class="acct-list">
       {% for c in pending %}
       <div class="acct-row">
-        <div class="acct-av">{{ c.email[0]|upper }}</div>
+        <div class="acct-av">{{ c.initiale }}</div>
         <div class="acct-main">
-          <span class="acct-mail">{{ c.email }}</span>
+          <span class="acct-mail">{{ c.nom_affiche }}</span>
           <span class="acct-sub">demandé le {{ c.cree_fmt }}</span>
         </div>
         <div class="acct-actions">
@@ -46,9 +46,9 @@
     <div class="acct-list">
       {% for c in membres %}
       <div class="acct-row">
-        <div class="acct-av">{{ c.email[0]|upper }}</div>
+        <div class="acct-av">{{ c.initiale }}</div>
         <div class="acct-main">
-          <span class="acct-mail">{{ c.email }}</span>
+          <span class="acct-mail">{{ c.nom_affiche }}</span>
           <span class="acct-sub">
             {%- if c.id == moi_id %}toi · {% if c.mdp_hash %}connecté en local · {% endif %}créé le {{ c.cree_fmt }}
             {%- elif c.etat == 'bloque' %}bloqué {% if c.bloque_fmt %}le {{ c.bloque_fmt }}{% endif %}
@@ -84,8 +84,10 @@
                 <button class="btn ghost small">Débloquer</button>
               </form>
             {% endif %}
-            {% if c.role != 'super_admin' %}
-            <form method="post" action="{{ url_for('accounts.supprimer', compte_id=c.id) }}" onsubmit="return confirm('Supprimer définitivement {{ c.email }} ?');">
+            {# Suppression : membres toujours ; super-admin seulement s'il y en a
+               un autre (nettoyage d'un doublon), jamais le dernier ni soi-même. #}
+            {% if c.role != 'super_admin' or nb_super_admins > 1 %}
+            <form method="post" action="{{ url_for('accounts.supprimer', compte_id=c.id) }}" onsubmit="return confirm('Supprimer définitivement « {{ c.nom_affiche }} » ?');">
               <button class="btn danger small icon-btn" aria-label="Supprimer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>
               </button>
