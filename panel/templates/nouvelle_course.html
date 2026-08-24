@@ -228,6 +228,7 @@ async function extraireIA() {
     if (i.telephone) document.getElementById('client_tel').value = i.telephone;
     if (i.prise_en_charge) { document.getElementById('depart').value = i.prise_en_charge; matchLieuTexte('depart', i.prise_en_charge); }
     if (i.depose) { document.getElementById('arrivee').value = i.depose; matchLieuTexte('arrivee', i.depose); }
+    if (i.date_heure) document.getElementById('quand').value = i.date_heure;
     autoMatchTarif();
     toast('Infos extraites ✓ — vérifie puis complète.');
   } catch (e) {

@@ -29,8 +29,14 @@ changement de fournisseur trivial). Fournisseurs : **Gemini**, **Mistral**,
 **Groq**. Le fournisseur, le modèle et la clé se règlent **dans l'app**
 (*Paramètres → Extraction IA*, super-admin) et sont stockés en base
 (`app_settings`) — aucune clé dans le `.env`, et bascule possible sans
-redéploiement. Réponse attendue : JSON `{nom, telephone, prise_en_charge, depose}`
-(parsing tolérant aux blocs ```json``` et au texte parasite).
+redéploiement. Réponse attendue : JSON
+`{nom, telephone, prise_en_charge, depose, date_heure}` (parsing tolérant aux
+blocs ```json``` et au texte parasite).
+
+La **date courante est injectée dans le prompt** pour résoudre les expressions
+relatives (« demain », « après-demain », « dans 3 jours », « lundi prochain »,
+« midi trente »…). `date_heure` est renvoyée au format `AAAA-MM-JJTHH:MM`
+(normalisée côté serveur) et pré-remplit le champ date/heure du formulaire.
 
 Ajouter un fournisseur : écrire `_call_<nom>()` dans `ai.py` et l'enregistrer
 dans `PROVIDERS` + `DEFAULTS` + `PROVIDER_LABELS`.
