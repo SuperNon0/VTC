@@ -29,7 +29,7 @@ from .settings import get_setting
 # Modèles par défaut (gratuits au moment du développement — modifiables en
 # Paramètres si les offres évoluent).
 DEFAULTS = {
-    "gemini": "gemini-2.0-flash",
+    "gemini": "gemini-3.6-flash",
     "mistral": "mistral-small-latest",
     "groq": "llama-3.3-70b-versatile",
 }
