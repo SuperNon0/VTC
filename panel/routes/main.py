@@ -128,14 +128,15 @@ def course_estimer(course_id: int):
         return jsonify(ok=False, error="non autorisé"), 403
     if not (course["depart"] and course["arrivee"]):
         return jsonify(ok=False, error="départ et arrivée requis"), 400
-    est = maps.estimate(course["depart"], course["arrivee"])
+    est, raison = maps.estimate_or_reason(course["depart"], course["arrivee"])
     if not est:
-        return jsonify(ok=False,
-                       error="Estimation indisponible (adresse introuvable ou "
-                             "service injoignable)."), 502
+        return jsonify(ok=False, error=raison), 502
     C.set_estimation(course_id, est["distance_km"], est["duree_min"])
+    fmt = maps.fmt_duree(est["duree_min"])
+    if est.get("approx"):
+        fmt += " (approx.)"
     return jsonify(ok=True, distance_km=est["distance_km"],
-                   duree_min=est["duree_min"], duree_fmt=maps.fmt_duree(est["duree_min"]))
+                   duree_min=est["duree_min"], duree_fmt=fmt, note=raison)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
