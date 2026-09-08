@@ -1,0 +1,122 @@
+{% extends "_layout.html" %}
+{% block title %}Notifications — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}notifications{% endblock %}
+
+{% block app_content %}
+<div class="acct-wrap" style="max-width:620px">
+  <div style="margin-bottom:14px">
+    <a href="{{ url_for('accounts.reglages') }}" class="btn ghost small">← Retour aux réglages</a>
+  </div>
+
+  <section class="acct-section">
+    <h3>Message de notification (nouvelle course)</h3>
+    <p class="access-note" style="text-align:left;margin:0 0 12px">
+      Personnalise le <b>titre</b> et le <b>texte</b> de la notification envoyée
+      au conducteur quand une course lui est assignée. Utilise des
+      <b>placeholders</b> entre crochets, remplacés par les infos de la course.
+    </p>
+
+    {% if impersonating %}
+      <div class="fl-card"><p class="access-text" style="text-align:left">Reviens à
+        ton compte pour modifier ces réglages.</p></div>
+    {% else %}
+
+    <div class="fl-card" style="margin-bottom:14px">
+      <div class="fl-label" style="margin-bottom:8px">Placeholders disponibles</div>
+      <div class="tx-chips">
+        {% for code, desc in placeholders.items() %}
+        <button type="button" class="tx-chip" title="{{ desc }}"
+                onclick="insertPlaceholder('[{{ code }}]')">[{{ code }}]</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('config.notifications_save') }}"
+          style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label class="fl-label" for="titre">Titre</label>
+        <input class="tx-input" type="text" name="titre" id="titre" value="{{ titre }}"
+               onfocus="lastField=this" placeholder="{{ default_titre }}">
+      </div>
+      <div>
+        <label class="fl-label" for="corps">Texte</label>
+        <textarea class="tx-input tx-area" name="corps" id="corps" rows="3"
+                  onfocus="lastField=this" placeholder="{{ default_corps }}">{{ corps }}</textarea>
+      </div>
+
+      <div class="fl-card" style="background:var(--bg)">
+        <div class="fl-label" style="margin-bottom:6px">Aperçu (exemple)</div>
+        <div style="font-family:var(--font-serif);color:var(--accent);font-size:1.05rem" id="pv-title"></div>
+        <div style="font-size:.82rem;color:var(--text);margin-top:.3rem" id="pv-body"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <button type="submit" name="reset" value="1" class="btn ghost small"
+                onclick="return confirm('Réinitialiser le message par défaut ?')">Réinitialiser</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+    {% endif %}
+  </section>
+
+  <!-- ------------------------------------------------ test par conducteur -->
+  <section class="acct-section">
+    <h3>Tester les notifications</h3>
+    {% if not push_dispo %}
+    <div class="fl-card"><p class="access-text" style="text-align:left">Web Push
+      indisponible sur ce serveur (dépendances manquantes).</p></div>
+    {% else %}
+    <p class="access-note" style="text-align:left;margin:0 0 12px">
+      Envoie une notification de test à un conducteur pour vérifier ses appareils.
+      « Pas d'appareil » = le conducteur n'a pas encore activé les notifications
+      (bouton « Activer » sur son calendrier ; iPhone : app ajoutée à l'écran d'accueil).
+    </p>
+    <div class="acct-list">
+      {% for c in conducteurs %}
+      <div class="acct-row">
+        <div class="acct-av">{{ (c.email[0]|upper) if c.email else 'A' }}</div>
+        <div class="acct-main">
+          <span class="acct-mail">{{ c.email }}</span>
+          <span class="acct-sub">
+            {% if c.abonne %}<span style="color:var(--green)">appareil abonné</span>
+            {% else %}<span style="color:var(--muted)">pas d'appareil</span>{% endif %}
+          </span>
+        </div>
+        <div class="acct-actions">
+          <form method="post" action="{{ url_for('config.notifications_test') }}">
+            <input type="hidden" name="compte_id" value="{{ c.id }}">
+            <button class="btn ghost small" {{ 'disabled' if not c.abonne else '' }}>Envoyer un test</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+  var lastField = document.getElementById('corps');
+  function insertPlaceholder(ph) {
+    var el = lastField || document.getElementById('corps');
+    var s = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var e = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    el.value = el.value.slice(0, s) + ph + el.value.slice(e);
+    el.focus(); el.selectionStart = el.selectionEnd = s + ph.length;
+    renderPreview();
+  }
+  var SAMPLE = { nom: 'Marie Dupont', telephone: '06 12 34 56 78',
+    depart: 'Gare du Grau-du-Roi', arrivee: 'Aéroport de Montpellier',
+    prix: '32.00 €', date: '25 août 2026 à 14 h 30', duree: '38 min' };
+  function fill(t) { var o = t || ''; for (var k in SAMPLE) o = o.split('[' + k + ']').join(SAMPLE[k]); return o; }
+  function renderPreview() {
+    document.getElementById('pv-title').textContent =
+      fill(document.getElementById('titre').value) || '{{ default_titre }}';
+    document.getElementById('pv-body').textContent =
+      fill(document.getElementById('corps').value) || '{{ default_corps }}';
+  }
+  document.getElementById('titre').addEventListener('input', renderPreview);
+  document.getElementById('corps').addEventListener('input', renderPreview);
+  renderPreview();
+</script>
+{% endblock %}

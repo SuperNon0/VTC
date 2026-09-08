@@ -1,0 +1,141 @@
+{% extends "_layout.html" %}
+{% block title %}Course — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}détail course{% endblock %}
+
+{% block app_content %}
+<main class="tx-main tx-form-wrap">
+  <div style="margin-bottom:14px">
+    <a href="{{ url_for('main.dashboard') }}" class="btn ghost small">← Retour au calendrier</a>
+  </div>
+
+  <article class="fl-card">
+    <div class="tx-course-top" style="margin-bottom:.8rem">
+      <span class="tx-time" style="font-size:1.4rem">{{ c.quand_fmt }}</span>
+      <span class="tx-statut tx-st-{{ c.statut }}" id="st-badge">{{ c.statut_label }}</span>
+    </div>
+
+    <h2 class="fl-title-serif" style="font-size:1.4rem;margin:0 0 .2rem">
+      {{ c.client_nom or 'Client non précisé' }}
+    </h2>
+    <div style="margin-bottom:1rem">
+      {% if habitue %}
+      <span class="fl-tag" style="color:var(--accent-2);border-color:rgba(79,195,161,.4)">★ Client habitué</span>
+      {% else %}
+      <span class="fl-tag">Nouveau client</span>
+      {% endif %}
+    </div>
+
+    <div class="tx-detail-grid">
+      <div class="fl-label">Téléphone</div>
+      <div>{% if c.client_tel %}<a href="tel:{{ c.client_tel }}" class="tx-tel">{{ c.client_tel }}</a>{% else %}<span class="tx-muted">—</span>{% endif %}</div>
+
+      <div class="fl-label">Prise en charge</div>
+      <div>{{ c.depart or '—' }}</div>
+
+      <div class="fl-label">Dépose</div>
+      <div>{{ c.arrivee or '—' }}</div>
+
+      <div class="fl-label">Prix</div>
+      <div>{% if c.prix is not none %}<b class="tx-prix" style="font-size:1rem">{{ '%.2f'|format(c.prix) }} €</b>{% else %}<span class="tx-muted">—</span>{% endif %}</div>
+
+      <div class="fl-label">Trajet estimé</div>
+      <div id="estim-box">
+        {% if c.duree_min %}<b id="estim-txt">≈ {{ duree_fmt }}{% if c.distance_km %} · {{ '%.1f'|format(c.distance_km) }} km{% endif %}</b>
+        {% else %}<span class="tx-muted" id="estim-txt">non estimé</span>{% endif %}
+        {% if maps_enabled %}
+        <button type="button" class="btn ghost small" style="margin-left:.5rem" id="estim-btn" onclick="estimer({{ c.id }})">↻ Estimer</button>
+        {% endif %}
+      </div>
+
+      <div class="fl-label">Conducteur assigné</div>
+      <div>{{ conducteur_email or 'moi' }}{% if est_conducteur %} <span class="tx-muted">(moi)</span>{% endif %}</div>
+
+      <div class="fl-label">Créée par</div>
+      <div>{{ createur_email or 'moi' }}</div>
+
+      {% if c.notes %}
+      <div class="fl-label">Notes</div>
+      <div>{{ c.notes }}</div>
+      {% endif %}
+    </div>
+  </article>
+
+  {# ── Mise à jour du statut : ICI, dans l'app (pas sur le calendrier natif) ── #}
+  <section class="fl-card" style="margin-top:1rem">
+    <div class="fl-label" style="margin-bottom:.5rem">Statut de la course</div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      {% for code, label in statuts %}
+      <button type="button" class="tx-stbtn tx-st-{{ code }}{% if code == c.statut %} on{% endif %}"
+              data-code="{{ code }}" onclick="majStatut({{ c.id }}, '{{ code }}')">{{ label }}</button>
+      {% endfor %}
+    </div>
+    <p class="access-note" style="text-align:left;margin:.6rem 0 0">
+      Le statut se met à jour ici, dans l'application. L'événement ajouté au
+      calendrier de ton téléphone reste figé (on ne peut pas y changer le statut).
+    </p>
+  </section>
+
+  {# ── Ajout au calendrier natif (iPhone .ics / Android Google Agenda) ── #}
+  <section class="fl-card" style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <span class="access-text" style="text-align:left;margin:0">Ajouter cette course au calendrier de mon téléphone</span>
+    <button class="btn ghost small" onclick="addToCalendar({{ c.id }})">📅 Ajouter à mon agenda</button>
+  </section>
+
+  {# ── Suppression de la course ─────────────────────────────────────────── #}
+  <section style="margin-top:1rem;text-align:right">
+    <form method="post" action="{{ url_for('main.course_supprimer', course_id=c.id) }}"
+          onsubmit="return confirm('Supprimer définitivement cette course ?');">
+      <button type="submit" class="btn danger small">🗑 Supprimer la course</button>
+    </form>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toast(m, err) {
+  var t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.background = err ? 'var(--danger)' : 'var(--accent)';
+  t.style.color = err ? '#fff' : '#0e0f11';
+  t.classList.add('show');
+  setTimeout(function () { t.classList.remove('show'); }, 2400);
+}
+function isIOS() {
+  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function addToCalendar(id) {
+  window.location.href = isIOS() ? '/course/' + id + '/ics' : '/course/' + id + '/google';
+}
+async function estimer(id) {
+  var btn = document.getElementById('estim-btn');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    var r = await fetch('/course/' + id + '/estimer', { method: 'POST', credentials: 'same-origin' });
+    var j = await r.json().catch(function () { return {}; });
+    if (!r.ok || !j.ok) { toast(j.error || 'Estimation indisponible', true); return; }
+    var txt = '≈ ' + j.duree_fmt + (j.distance_km ? ' · ' + j.distance_km + ' km' : '');
+    document.getElementById('estim-txt').outerHTML = '<b id="estim-txt">' + txt + '</b>';
+    toast('Trajet estimé ✓');
+  } catch (e) { toast('Erreur : ' + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = '↻ Estimer'; }
+}
+async function majStatut(id, statut) {
+  var body = new URLSearchParams({ statut: statut });
+  var r = await fetch('/api/courses/' + id + '/statut', {
+    method: 'POST', credentials: 'same-origin', body: body,
+  });
+  var j = await r.json().catch(function () { return {}; });
+  if (!r.ok || !j.ok) { toast(j.error || 'Erreur', true); return; }
+  var badge = document.getElementById('st-badge');
+  badge.textContent = j.label; badge.className = 'tx-statut tx-st-' + statut;
+  document.querySelectorAll('.tx-stbtn').forEach(function (b) {
+    b.classList.toggle('on', b.dataset.code === statut);
+  });
+  toast('Statut : ' + j.label + ' ✓');
+}
+</script>
+{% endblock %}

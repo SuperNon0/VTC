@@ -1,0 +1,32 @@
+{% extends "_layout.html" %}
+{% block title %}Mes statistiques — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}mes stats{% endblock %}
+
+{% block app_content %}
+<main class="tx-main">
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.4rem">Mes statistiques</h2>
+  <p class="access-note" style="text-align:left;margin:0 0 1rem">
+    Aperçu du mois {{ apercu.mois }}. Le tableau de bord détaillé (nombre de
+    courses, chiffre d'affaires, distance…) sera précisé dans une prochaine
+    version — cette vue unique est déjà réutilisée par le super-admin via
+    « voir en tant que ».
+  </p>
+
+  <div class="tx-stats">
+    <div class="fl-card tx-stat">
+      <div class="fl-label">Courses ce mois</div>
+      <div class="fl-value-serif" style="font-size:2rem">{{ apercu.nb_courses }}</div>
+    </div>
+    <div class="fl-card tx-stat">
+      <div class="fl-label">CA (courses terminées)</div>
+      <div class="fl-value-serif" style="font-size:2rem">{{ '%.2f'|format(apercu.ca) }} €</div>
+    </div>
+  </div>
+
+  <p class="access-note" style="text-align:left;margin-top:1rem">
+    Les données nécessaires (date, prix, conducteur assigné, statut) sont
+    enregistrées et requêtables par conducteur et par période : le tableau
+    détaillé pourra être ajouté sans restructuration.
+  </p>
+</main>
+{% endblock %}

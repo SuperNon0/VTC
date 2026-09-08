@@ -1,0 +1,108 @@
+{% extends "_layout.html" %}
+{% block title %}Modèle de calendrier — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}modèle calendrier{% endblock %}
+
+{% block app_content %}
+<div class="acct-wrap" style="max-width:620px">
+  <div style="margin-bottom:14px">
+    <a href="{{ url_for('accounts.reglages') }}" class="btn ghost small">← Retour aux réglages</a>
+  </div>
+
+  <section class="acct-section">
+    <h3>Export vers le calendrier (iPhone / Google Agenda)</h3>
+    <p class="access-note" style="text-align:left;margin:0 0 12px">
+      Quand un conducteur ajoute une course à son calendrier, l'événement est
+      rempli automatiquement. Tu peux personnaliser le <b>titre</b> et les
+      <b>notes</b> de l'événement en utilisant des <b>placeholders</b> entre
+      crochets — ils sont remplacés par les infos de la course.
+    </p>
+
+    {% if impersonating %}
+      <div class="fl-card"><p class="access-text" style="text-align:left">Reviens à
+        ton compte pour modifier ces réglages.</p></div>
+    {% else %}
+
+    <div class="fl-card" style="margin-bottom:14px">
+      <div class="fl-label" style="margin-bottom:8px">Placeholders disponibles</div>
+      <div class="tx-chips">
+        {% for code, desc in placeholders.items() %}
+        <button type="button" class="tx-chip" title="{{ desc }}"
+                onclick="insertPlaceholder('[{{ code }}]')">[{{ code }}]</button>
+        {% endfor %}
+      </div>
+      <p class="access-note" style="text-align:left;margin:10px 0 0;font-size:.7rem">
+        {% for code, desc in placeholders.items() %}
+        <code>[{{ code }}]</code> = {{ desc }}{% if not loop.last %} · {% endif %}
+        {% endfor %}
+      </p>
+    </div>
+
+    <form method="post" action="{{ url_for('config.calendrier_save') }}"
+          style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label class="fl-label" for="titre">Titre de l'événement</label>
+        <input class="tx-input" type="text" name="titre" id="titre" value="{{ titre }}"
+               onfocus="lastField=this" placeholder="{{ default_titre }}">
+        <p class="access-note" style="text-align:left;margin:.3rem 0 0">
+          Conseil : le nom de la personne + le trajet (départ → arrivée).
+        </p>
+      </div>
+      <div>
+        <label class="fl-label" for="notes">Notes de l'événement</label>
+        <textarea class="tx-input tx-area" name="notes" id="notes" rows="8"
+                  onfocus="lastField=this">{{ notes }}</textarea>
+        <p class="access-note" style="text-align:left;margin:.3rem 0 0">
+          Écris librement, en insérant des placeholders. Exemple d'une ligne :
+          <code>Prix : [prix]</code>. Un placeholder sans valeur devient vide.
+        </p>
+      </div>
+
+      <div class="fl-card" style="background:var(--bg)">
+        <div class="fl-label" style="margin-bottom:6px">Aperçu (exemple)</div>
+        <div style="font-family:var(--font-serif);color:var(--accent);font-size:1.05rem" id="pv-title"></div>
+        <pre id="pv-notes" style="white-space:pre-wrap;font-family:var(--font-mono);font-size:.78rem;color:var(--text);margin:.5rem 0 0"></pre>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <button type="submit" name="reset" value="1" class="btn ghost small"
+                onclick="return confirm('Réinitialiser le modèle par défaut ?')">Réinitialiser</button>
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </form>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+  var lastField = document.getElementById('notes');
+  function insertPlaceholder(ph) {
+    var el = lastField || document.getElementById('notes');
+    var start = el.selectionStart != null ? el.selectionStart : el.value.length;
+    var end = el.selectionEnd != null ? el.selectionEnd : el.value.length;
+    el.value = el.value.slice(0, start) + ph + el.value.slice(end);
+    el.focus();
+    el.selectionStart = el.selectionEnd = start + ph.length;
+    renderPreview();
+  }
+  // Aperçu en direct avec un exemple de course.
+  var SAMPLE = {
+    nom: 'Marie Dupont', telephone: '06 12 34 56 78',
+    depart: 'Gare du Grau-du-Roi', arrivee: 'Aéroport de Montpellier',
+    prix: '32.00 €', date: '25 août 2026 à 14 h 30', duree: '38 min',
+    statut: 'À faire', habitue: 'Habitué', notes: 'Bagages volumineux'
+  };
+  function fill(tpl) {
+    var out = tpl || '';
+    for (var k in SAMPLE) out = out.split('[' + k + ']').join(SAMPLE[k]);
+    return out;
+  }
+  function renderPreview() {
+    var t = document.getElementById('titre'), n = document.getElementById('notes');
+    document.getElementById('pv-title').textContent = fill(t.value) || '(titre vide)';
+    document.getElementById('pv-notes').textContent = fill(n.value);
+  }
+  document.getElementById('titre').addEventListener('input', renderPreview);
+  document.getElementById('notes').addEventListener('input', renderPreview);
+  renderPreview();
+</script>
+{% endblock %}

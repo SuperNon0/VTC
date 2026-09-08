@@ -1,0 +1,315 @@
+{% extends "_layout.html" %}
+{% block title %}Nouvelle course — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}nouvelle course{% endblock %}
+
+{% block app_content %}
+<main class="tx-main tx-form-wrap">
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">Nouvelle course</h2>
+
+  {# ── Extraction IA d'un message client (cahier §6.1) ─────────────────────── #}
+  <section class="fl-card" style="margin-bottom:1rem">
+    <label class="fl-label" for="ia-msg">Coller le message du client (extraction automatique)</label>
+    {% if ai_on %}
+    <textarea id="ia-msg" class="tx-input tx-area" rows="3"
+              placeholder="Ex : Bonjour c'est Marie, pouvez-vous me prendre à la gare du Grau-du-Roi pour aller à l'aéroport de Montpellier ? Mon numéro : 06 12 34 56 78"></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+      <button type="button" class="btn ghost small" id="ia-btn" onclick="extraireIA()">✨ Extraire les infos</button>
+    </div>
+    {% else %}
+    <p class="access-note" style="text-align:left;margin:.4rem 0 0">
+      L'extraction automatique n'est pas encore configurée.
+      {% if is_super_admin %}Règle-la dans <a href="{{ url_for('config.ia') }}">Paramètres → Extraction IA</a>.
+      {% else %}Le super-admin peut l'activer dans les paramètres.{% endif %}
+      Tu peux remplir le formulaire à la main ci-dessous.
+    </p>
+    {% endif %}
+  </section>
+
+  <form method="post" action="{{ url_for('main.api_creer_course') }}" class="fl-card tx-form">
+    <input type="hidden" name="client_id" id="client_id">
+    <input type="hidden" name="depart_lieu_id" id="depart_lieu_id">
+    <input type="hidden" name="arrivee_lieu_id" id="arrivee_lieu_id">
+
+    {# ── Client (avec autocomplétion des habitués, §6.4) ───────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="client_nom">Nom du client</label>
+      <div class="tx-ac">
+        <input class="tx-input" type="text" name="client_nom" id="client_nom"
+               autocomplete="off" placeholder="Nom du client"
+               oninput="rechercherClient(this.value)">
+        <div class="tx-ac-list" id="ac-list"></div>
+      </div>
+    </div>
+
+    <div class="tx-field">
+      <label class="fl-label" for="client_tel">Téléphone</label>
+      <input class="tx-input" type="tel" name="client_tel" id="client_tel"
+             placeholder="06 …">
+    </div>
+
+    {# ── Prise en charge : tape un lieu configuré → l'adresse se remplit (§6.2) ─ #}
+    <div class="tx-field">
+      <label class="fl-label" for="depart">Adresse de prise en charge</label>
+      <div class="tx-ac">
+        <input class="tx-input" type="text" name="depart" id="depart" autocomplete="off"
+               placeholder="Tape « gare… » ou une adresse libre"
+               oninput="chercherLieu('depart', this.value)">
+        <div class="tx-ac-list" id="ac-depart"></div>
+      </div>
+    </div>
+
+    {# ── Dépose ────────────────────────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="arrivee">Adresse de dépose</label>
+      <div class="tx-ac">
+        <input class="tx-input" type="text" name="arrivee" id="arrivee" autocomplete="off"
+               placeholder="Tape « aéroport… » ou une adresse libre"
+               oninput="chercherLieu('arrivee', this.value)">
+        <div class="tx-ac-list" id="ac-arrivee"></div>
+      </div>
+    </div>
+
+    {# ── Date & heure de prise en charge (deux champs séparés) ─────────────── #}
+    <div class="tx-field">
+      <label class="fl-label">Date et heure — quand aller chercher le client</label>
+      <div class="tx-chips">
+        <button type="button" class="tx-chip" onclick="setJour(0)">Aujourd'hui</button>
+        <button type="button" class="tx-chip" onclick="setJour(1)">Demain</button>
+        <button type="button" class="tx-chip" onclick="setJour(2)">Après-demain</button>
+      </div>
+      <div style="display:flex;gap:.6rem;margin-top:.5rem">
+        <input class="tx-input" type="date" name="date" id="date" required style="flex:2"
+               aria-label="Date">
+        <input class="tx-input" type="time" name="heure" id="heure" style="flex:1"
+               aria-label="Heure">
+      </div>
+    </div>
+
+    {# ── Prix : grille auto-sélectionnée si départ+arrivée correspondent (§6.3) ─ #}
+    <div class="tx-field">
+      <label class="fl-label" for="tarif_choix">Prix</label>
+      <select class="tx-input" name="tarif_choix" id="tarif_choix" onchange="onTarif()">
+        <option value="">— Choisir —</option>
+        {% for t in tarifs %}
+        <option value="{{ t.id }}">{{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €</option>
+        {% endfor %}
+        <option value="autre">Autre (prix libre)</option>
+      </select>
+      <input class="tx-input" type="text" inputmode="decimal" name="prix_libre" id="prix_libre"
+             placeholder="Prix en €" style="display:none;margin-top:.5rem">
+      <p class="access-note" id="tarif-auto" style="text-align:left;margin:.35rem 0 0;display:none">
+        Tarif sélectionné automatiquement d'après le trajet — modifiable.
+      </p>
+    </div>
+
+    {# ── Conducteur assigné (§6.5) ─────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="conducteur_id">Conducteur assigné</label>
+      <select class="tx-input" name="conducteur_id" id="conducteur_id" required>
+        <option value="">— Choisir le conducteur —</option>
+        {% for c in conducteurs %}
+        <option value="{{ c.id }}" {{ 'selected' if c.id == compte['id'] else '' }}>
+          {{ nom_compte(c) }}{% if c.id == compte['id'] %} (moi){% endif %}{% if is_super_admin and c.role == 'super_admin' %} · admin{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {# ── Notes ─────────────────────────────────────────────────────────────── #}
+    <div class="tx-field">
+      <label class="fl-label" for="notes">Notes</label>
+      <textarea class="tx-input tx-area" name="notes" id="notes" rows="2"
+                placeholder="Infos complémentaires…"></textarea>
+    </div>
+
+    <div style="display:flex;gap:.8rem;justify-content:flex-end;margin-top:.4rem">
+      <a href="{{ url_for('main.dashboard') }}" class="btn ghost">Annuler</a>
+      <button type="submit" class="btn primary">Créer et assigner</button>
+    </div>
+  </form>
+</main>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.LIEUX = {{ lieux_json|tojson }};
+  window.TARIFS = {{ tarifs_json|tojson }};
+</script>
+<script>
+function toast(m, err) {
+  var t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.background = err ? 'var(--danger)' : 'var(--accent)';
+  t.style.color = err ? '#fff' : '#0e0f11';
+  t.classList.add('show');
+  setTimeout(function () { t.classList.remove('show'); }, 2600);
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function onTarif() {
+  var sel = document.getElementById('tarif_choix').value;
+  document.getElementById('prix_libre').style.display = (sel === 'autre') ? 'block' : 'none';
+  if (sel !== '' ) document.getElementById('tarif-auto').style.display = 'none';
+}
+
+// Boutons rapides de date : renseigne le champ « date » (l'heure est conservée).
+function setJour(offset) {
+  var d = new Date();
+  d.setDate(d.getDate() + offset);
+  var m = d.getMonth() + 1, day = d.getDate();
+  document.getElementById('date').value =
+    d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+}
+
+// ── Lieux configurés : autocomplétion des adresses (§6.2) ────────────────────
+function chercherLieu(field, q) {
+  document.getElementById(field + '_lieu_id').value = '';   // saisie libre = pas de lieu
+  var list = document.getElementById('ac-' + field);
+  q = (q || '').trim().toLowerCase();
+  if (!q) { closeList(list); autoMatchTarif(); return; }
+  var res = (window.LIEUX || []).filter(function (l) {
+    return l.nom.toLowerCase().indexOf(q) !== -1 ||
+           (l.adresse && l.adresse.toLowerCase().indexOf(q) !== -1);
+  }).slice(0, 6);
+  if (!res.length) { closeList(list); autoMatchTarif(); return; }
+  list.innerHTML = res.map(function (l) {
+    return '<div class="tx-ac-item" data-id="' + l.id + '" data-field="' + field + '">' +
+      '<b>' + esc(l.nom) + '</b>' +
+      (l.adresse ? ' <span class="tx-muted">' + esc(l.adresse) + '</span>' : '') + '</div>';
+  }).join('');
+  list.classList.add('open');
+}
+function choisirLieu(field, id) {
+  var l = (window.LIEUX || []).find(function (x) { return x.id === id; });
+  if (!l) return;
+  document.getElementById(field).value = l.adresse || l.nom;
+  document.getElementById(field + '_lieu_id').value = l.id;
+  closeList(document.getElementById('ac-' + field));
+  autoMatchTarif();
+}
+['depart', 'arrivee'].forEach(function (field) {
+  document.getElementById('ac-' + field).addEventListener('click', function (e) {
+    var it = e.target.closest('.tx-ac-item');
+    if (it) choisirLieu(field, +it.dataset.id);
+  });
+});
+function closeList(list) { if (list) { list.innerHTML = ''; list.classList.remove('open'); } }
+
+// ── Auto-sélection de la grille tarifaire selon départ + arrivée (§6.3) ──────
+function autoMatchTarif() {
+  var dep = parseInt(document.getElementById('depart_lieu_id').value, 10) || null;
+  var arr = parseInt(document.getElementById('arrivee_lieu_id').value, 10) || null;
+  if (!dep && !arr) return;
+  var best = null, bestScore = 0;
+  (window.TARIFS || []).forEach(function (t) {
+    // Un côté non renseigné du tarif = joker.
+    var okDep = (t.dep == null) || (t.dep === dep);
+    var okArr = (t.arr == null) || (t.arr === arr);
+    if (!okDep || !okArr) return;
+    var score = (t.dep && t.dep === dep ? 1 : 0) + (t.arr && t.arr === arr ? 1 : 0);
+    if (score > bestScore) { bestScore = score; best = t; }
+  });
+  if (best && bestScore > 0) {
+    var sel = document.getElementById('tarif_choix');
+    if (sel.value === '' || sel.dataset.auto === '1') {   // ne pas écraser un choix manuel
+      sel.value = String(best.id);
+      sel.dataset.auto = '1';
+      document.getElementById('prix_libre').style.display = 'none';
+      document.getElementById('tarif-auto').style.display = 'block';
+    }
+  }
+}
+document.getElementById('tarif_choix').addEventListener('change', function () {
+  this.dataset.auto = '';   // choix manuel : on ne réécrasera plus
+});
+
+// ── Extraction IA (cahier §6.1) ──────────────────────────────────────────────
+async function extraireIA() {
+  var msg = document.getElementById('ia-msg').value.trim();
+  if (!msg) { toast('Colle d\'abord le message du client.', true); return; }
+  var btn = document.getElementById('ia-btn');
+  btn.disabled = true; btn.textContent = '… extraction';
+  try {
+    var r = await fetch('/api/extract', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    var j = await r.json();
+    if (!r.ok || !j.ok) { toast(j.error || 'Extraction impossible.', true); return; }
+    var i = j.infos;
+    if (i.nom) document.getElementById('client_nom').value = i.nom;
+    if (i.telephone) document.getElementById('client_tel').value = i.telephone;
+    if (i.prise_en_charge) { document.getElementById('depart').value = i.prise_en_charge; matchLieuTexte('depart', i.prise_en_charge); }
+    if (i.depose) { document.getElementById('arrivee').value = i.depose; matchLieuTexte('arrivee', i.depose); }
+    if (i.date_heure) {
+      var parts = i.date_heure.split('T');
+      if (parts[0]) document.getElementById('date').value = parts[0];
+      if (parts[1]) document.getElementById('heure').value = parts[1].slice(0, 5);
+    }
+    autoMatchTarif();
+    toast('Infos extraites ✓ — vérifie puis complète.');
+  } catch (e) {
+    toast('Erreur : ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '✨ Extraire les infos';
+  }
+}
+// Si le texte extrait correspond à un lieu connu, on relie le lieu (pour l'auto-tarif).
+function matchLieuTexte(field, texte) {
+  var t = (texte || '').toLowerCase();
+  var l = (window.LIEUX || []).find(function (x) {
+    return t.indexOf(x.nom.toLowerCase()) !== -1;
+  });
+  document.getElementById(field + '_lieu_id').value = l ? l.id : '';
+}
+
+// ── Autocomplétion clients (cahier §6.4) ─────────────────────────────────────
+var acTimer = null, acClients = [];
+function rechercherClient(q) {
+  document.getElementById('client_id').value = '';
+  clearTimeout(acTimer);
+  var list = document.getElementById('ac-list');
+  if (q.trim().length < 2) { closeList(list); return; }
+  acTimer = setTimeout(async function () {
+    try {
+      var r = await fetch('/api/clients/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      var j = await r.json();
+      acClients = j.clients || [];
+      if (!acClients.length) { closeList(list); return; }
+      list.innerHTML = acClients.map(function (c, idx) {
+        return '<div class="tx-ac-item" data-idx="' + idx + '">' +
+          '<b>' + esc(c.nom) + '</b>' + (c.telephone ? ' <span class="tx-muted">' + esc(c.telephone) + '</span>' : '') + '</div>';
+      }).join('');
+      list.classList.add('open');
+    } catch (e) { /* silencieux */ }
+  }, 220);
+}
+document.getElementById('ac-list').addEventListener('click', function (e) {
+  var item = e.target.closest('.tx-ac-item');
+  if (item) choisirClient(acClients[+item.dataset.idx]);
+});
+function choisirClient(c) {
+  if (!c) return;
+  document.getElementById('client_nom').value = c.nom || '';
+  document.getElementById('client_tel').value = c.telephone || '';
+  document.getElementById('client_id').value = c.id || '';
+  if (c.adresses && c.adresses.length) document.getElementById('depart').value = c.adresses[0];
+  closeList(document.getElementById('ac-list'));
+}
+
+// Ferme les listes ouvertes au clic extérieur.
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.tx-ac')) {
+    ['ac-list', 'ac-depart', 'ac-arrivee'].forEach(function (id) {
+      closeList(document.getElementById(id));
+    });
+  }
+});
+</script>
+{% endblock %}

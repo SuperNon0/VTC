@@ -1,0 +1,70 @@
+{# ─────────────────────────────────────────────────────────────────────────────
+   Gabarit métier VTC — surcouche par-dessus la base verrouillée.
+
+   Étend le `base.html` de la base (thème, topbar, bandeau d'impersonation,
+   flashes) et y ajoute ce qui est propre au métier taxi/VTC :
+     - la feuille de style métier (app.css) + les métadonnées PWA (manifest,
+       icônes, Apple) via {% block head %} ;
+     - la barre de navigation du bas (Accueil / Courses / + Course / Clients /
+       Plus) ;
+     - l'enregistrement du service worker (PWA + Web Push).
+
+   Les écrans métier étendent CE fichier et remplissent {% block app_content %}
+   (et, au besoin, {% block scripts %}). La base n'est jamais modifiée.
+──────────────────────────────────────────────────────────────────────────── #}
+{% extends "base.html" %}
+
+{% block body_class %}has-bottomnav{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('main.static', filename='app.css') }}">
+  {# --- PWA : installation écran d'accueil iOS/Android (cahier §7) --- #}
+  <link rel="manifest" href="{{ url_for('main.static', filename='manifest.json') }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ brand.prefix }}{{ brand.suffix }}">
+  <link rel="apple-touch-icon" href="{{ url_for('main.static', filename='icon-192.png') }}">
+{% endblock %}
+
+{% block content %}
+  {% block app_content %}{% endblock %}
+
+  {# ── Barre de navigation en bas (redirections principales) ─────────────── #}
+  {% if session.get('compte_id') %}
+  {% set ep = request.endpoint %}
+  <nav class="bottomnav">
+    <a href="{{ url_for('main.dashboard') }}" class="bn-item{% if ep == 'main.dashboard' %} on{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>Accueil</span>
+    </a>
+    <a href="{{ url_for('main.mes_courses') }}" class="bn-item{% if ep == 'main.mes_courses' %} on{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span>Courses</span>
+    </a>
+    <a href="{{ url_for('main.nouvelle_course') }}" class="bn-item bn-add{% if ep == 'main.nouvelle_course' %} on{% endif %}">
+      <span class="bn-add-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+      <span>Course</span>
+    </a>
+    <a href="{{ url_for('config.clients') }}" class="bn-item{% if ep == 'config.clients' %} on{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span>Clients</span>
+    </a>
+    <a href="{{ url_for('main.plus') }}" class="bn-item{% if ep in ('main.plus', 'main.mes_stats', 'config.lieux', 'config.tarifs', 'config.ia', 'config.calendrier', 'config.notifications') or request.blueprint == 'accounts' %} on{% endif %}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+      <span>Plus</span>
+    </a>
+  </nav>
+
+  <script>
+    // Enregistrement du service worker (PWA + Web Push, cahier §7).
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function (e) {
+        console.warn('SW non enregistré', e);
+      });
+    }
+  </script>
+  {% endif %}
+
+  {% block scripts %}{% endblock %}
+{% endblock %}

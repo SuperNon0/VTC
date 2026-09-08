@@ -1,0 +1,115 @@
+{% extends "_layout.html" %}
+{% block title %}Mon calendrier — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}calendrier{% endblock %}
+
+{% block app_content %}
+<main class="tx-main">
+  <div class="tx-head">
+    <h2 class="fl-title-serif" style="font-size:1.5rem">Mes courses à venir</h2>
+    <a href="{{ url_for('main.nouvelle_course') }}" class="btn primary small">+ Nouvelle course</a>
+  </div>
+
+  {% if push_available and not deja_abonne %}
+  <div class="fl-card tx-push" id="push-banner">
+    <div>
+      <b>Activer les notifications</b>
+      <p class="access-note" style="text-align:left;margin:.3rem 0 0">
+        Reçois une alerte à chaque nouvelle course assignée.
+        <br><span class="tx-ios-note">iPhone : ajoute d'abord l'app à ton écran d'accueil
+        (Partager → « Sur l'écran d'accueil »), puis rouvre-la depuis l'icône.</span>
+      </p>
+    </div>
+    <button class="btn ghost small" id="push-btn" onclick="activerPush()">Activer</button>
+  </div>
+  {% endif %}
+
+  {% if not groupes %}
+  <div class="fl-card" style="text-align:center;color:var(--muted)">
+    <p style="margin:0">Aucune course à venir pour l'instant.</p>
+    <p class="access-note" style="margin:.4rem 0 0">Crée-en une avec « + Nouvelle course ».</p>
+  </div>
+  {% endif %}
+
+  {% for g in groupes %}
+  <section class="tx-day">
+    <h3 class="tx-day-label">{{ g.label }}</h3>
+    {% for c in g.courses %}
+    <a class="tx-course tx-course-link st-{{ c.statut }}" href="{{ url_for('main.course_detail', course_id=c.id) }}">
+      <div class="tx-course-top">
+        <span class="tx-time">{{ c.quand_fmt.split(' à ')[1] if ' à ' in c.quand_fmt else '' }}</span>
+        <span class="tx-statut tx-st-{{ c.statut }}">{{ c.statut_label }}</span>
+      </div>
+      <div class="tx-client">
+        {% if c.client_nom %}<b>{{ c.client_nom }}</b>{% else %}<b class="tx-muted">Client non précisé</b>{% endif %}
+        {% if c.client_tel %}<span class="tx-tel">{{ c.client_tel }}</span>{% endif %}
+      </div>
+      <div class="tx-trajet">
+        <span class="tx-pt">{{ c.depart or '—' }}</span>
+        <span class="tx-arrow">→</span>
+        <span class="tx-pt">{{ c.arrivee or '—' }}</span>
+      </div>
+      {% if c.notes %}<div class="tx-notes">{{ c.notes }}</div>{% endif %}
+      <div class="tx-course-foot">
+        {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% else %}<span></span>{% endif %}
+        <span class="tx-detail-arrow">Détail ›</span>
+      </div>
+    </a>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</main>
+
+<div class="toast" id="toast"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toast(m, err) {
+  var t = document.getElementById('toast');
+  t.textContent = m;
+  t.style.background = err ? 'var(--danger)' : 'var(--accent)';
+  t.style.color = err ? '#fff' : '#0e0f11';
+  t.classList.add('show');
+  setTimeout(function () { t.classList.remove('show'); }, 2400);
+}
+
+// ── Web Push : abonnement de cet appareil (cahier §6.5) ──────────────────────
+function urlB64ToUint8(b64) {
+  var pad = '='.repeat((4 - b64.length % 4) % 4);
+  var base = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(base), arr = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+async function activerPush() {
+  var btn = document.getElementById('push-btn');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast("Notifications non prises en charge sur cet appareil.", true); return;
+  }
+  btn.disabled = true;
+  try {
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Autorisation refusée.', true); btn.disabled = false; return; }
+    var reg = await navigator.serviceWorker.ready;
+    var keyResp = await (await fetch('/api/push/key', { credentials: 'same-origin' })).json();
+    if (!keyResp.available || !keyResp.key) { toast('Push non configuré côté serveur.', true); btn.disabled = false; return; }
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8(keyResp.key),
+    });
+    var r = await fetch('/api/push/subscribe', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub),
+    });
+    if (r.ok) {
+      toast('Notifications activées ✓');
+      var b = document.getElementById('push-banner');
+      if (b) b.style.display = 'none';
+    } else { toast('Échec de l\'abonnement.', true); btn.disabled = false; }
+  } catch (e) {
+    console.warn(e); toast('Erreur : ' + e.message, true); btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}
