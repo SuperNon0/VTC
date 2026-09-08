@@ -1,16 +1,21 @@
-"""Point d'entrée de développement.
+"""Point d'entrée de développement (modèle en couches).
 
-    python run.py
+Assemble la couche « base » (dossier base/, verrouillé) et la surcouche projet
+(dossier app/, tes écrans). Voir base/docs/… et le README.
 
-En production, sers l'app via gunicorn (voir deploy/) :
-    gunicorn -w 2 -b 127.0.0.1:8000 "wsgi:app"
+    python run.py            # http://127.0.0.1:8000
 """
 
 from __future__ import annotations
 
 import os
+import sys
 
-from panel import create_app
+ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(ROOT, "base"))  # → import panel (la base)
+sys.path.insert(0, ROOT)                          # → import app (ta surcouche)
+
+from panel import create_app  # noqa: E402
 
 app = create_app()
 

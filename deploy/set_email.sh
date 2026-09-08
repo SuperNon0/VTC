@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 #
-# VTC — rattacher ton e-mail Google au compte super-admin (accès unifié).
-# Réunit login local (mot de passe) + connexion Cloudflare (e-mail) sur UN compte,
-# et fusionne au passage un éventuel doublon / le compte qui a déjà cet e-mail.
+# Site de base — rattache / retire l'e-mail Google du compte administrateur de base.
+# Fusionne automatiquement un éventuel doublon (sans perdre de données).
 #
-#   sudo bash /opt/vtc/deploy/set_email.sh ton.email@gmail.com
-#   sudo bash /opt/vtc/deploy/set_email.sh --clear      # détacher l'e-mail
+#   sudo bash /opt/site-base/deploy/set_email.sh ton.email@gmail.com
+#   sudo bash /opt/site-base/deploy/set_email.sh --clear
 #
 set -euo pipefail
 
-INSTALL_DIR="/opt/vtc"
-SERVICE_USER="vtc"
+INSTALL_DIR="/opt/site-base"
+SERVICE_USER="sitebase"
+
+if [ $# -lt 1 ]; then
+  echo "Usage : $0 <email> | --clear"
+  exit 1
+fi
 
 cd "${INSTALL_DIR}"
-sudo -u "${SERVICE_USER}" "${INSTALL_DIR}/.venv/bin/python" -m panel.set_email "$@"
-
-echo "→ C'est le même compte : mot de passe OU Cloudflare avec cet e-mail."
+sudo -u "${SERVICE_USER}" "${INSTALL_DIR}/.venv/bin/python" "${INSTALL_DIR}/manage.py" set_email "$1"

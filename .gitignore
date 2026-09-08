@@ -4,6 +4,12 @@ data/
 *.db
 *.sqlite
 
+# --- Modèle en couches ---
+# Ce dépôt est un PROJET : base/ n'est PAS versionnée. La fondation est fournie
+# par bootstrap_base.py (installation) et « Mettre à jour la base » (sync_base).
+# Elle vit sur le disque mais ne doit jamais être committée.
+base/
+
 # Python
 __pycache__/
 *.py[cod]

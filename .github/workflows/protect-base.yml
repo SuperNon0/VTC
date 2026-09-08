@@ -1,0 +1,42 @@
+name: Protéger la couche base
+
+# Refuse toute modification de base/ dans un dépôt PROJET.
+# Le dépôt SOURCE (le site-base) est exclu : c'est là qu'on fait évoluer la base.
+# Adapte le nom si tu forkes le site-base sous un autre chemin.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  protect-base:
+    if: github.repository != 'SuperNon0/Site-base'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Vérifier qu'aucun fichier base/ n'est modifié
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BEFORE="${{ github.event.pull_request.base.sha }}"
+          else
+            BEFORE="${{ github.event.before }}"
+          fi
+          # 1er push / commit sans parent → on compare au parent si possible.
+          if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="$(git rev-parse HEAD~1 2>/dev/null || echo '')"
+          fi
+          if [ -z "${BEFORE}" ]; then
+            echo "Pas de commit de référence — rien à comparer."; exit 0
+          fi
+          CHANGED="$(git diff --name-only "${BEFORE}" HEAD -- base/ || true)"
+          if [ -n "${CHANGED}" ]; then
+            echo "::error::La couche base/ ne doit PAS être modifiée dans un projet."
+            echo "Utilise « Mettre à jour la base » (sync_base) pour la faire évoluer."
+            echo "${CHANGED}" | sed 's/^/  modifié: /'
+            exit 1
+          fi
+          echo "OK : base/ non modifiée."

@@ -1,0 +1,21 @@
+{# Partial « Réglages de l'application » — inclus par la page /reglages de la base.
+   Utilise les classes du thème (fl-card, acct-section, btn) → même DA que le site.
+   La base fournit le cadre ; ici, uniquement TON contenu. #}
+<section class="acct-section">
+  <h3>Exemple de réglage</h3>
+  <form method="post" action="{{ url_for('app.reglages_enregistrer') }}">
+    <div class="fl-card" style="display:flex;flex-direction:column;gap:12px">
+      <label class="fl-label" for="app_titre">Titre affiché sur l'accueil</label>
+      <input type="text" id="app_titre" name="app_titre"
+             value="{{ app_titre }}" placeholder="Ex. Ma cinémathèque"
+             style="margin-top:6px">
+      <div style="display:flex;justify-content:flex-end">
+        <button type="submit" class="btn primary">Enregistrer</button>
+      </div>
+    </div>
+  </form>
+  <p class="access-note" style="text-align:left;margin-top:8px">
+    Réglage stocké dans <code>app_settings</code> (magasin clé/valeur de la base)
+    via <code>set_setting()</code>. Ajoute ici tes propres champs.
+  </p>
+</section>

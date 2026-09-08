@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Accueil — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}{{ brand.badge }}{% endblock %}
+{% block content %}
+<main style="max-width:960px;margin:0 auto;padding:28px 20px 60px">
+  <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+    <h1 style="font-size:1.9rem">{{ app_titre or "Bienvenue" }}{% if compte %}<span style="font-weight:400;color:var(--muted)">, {{ compte.email }}</span>{% endif %}</h1>
+    <div style="display:flex;gap:8px;align-items:center">
+      {% if app_reglages_template %}
+      <a class="btn ghost small" href="{{ url_for('accounts.reglages') }}">Réglages</a>
+      {% endif %}
+      {% if any_admin_capability() %}
+      <a class="btn ghost small" href="{{ url_for('accounts.parametres') }}">Paramètres</a>
+      {% endif %}
+      <a class="btn ghost small" href="{{ url_for('auth.logout') }}">Déconnexion</a>
+    </div>
+  </div>
+
+  <p class="muted" style="margin-bottom:24px;max-width:640px">
+    Écran d'accueil <b style="color:var(--text)">de ta surcouche projet</b>
+    (<code>app/</code>). La base (thème, login, permissions) reste verrouillée
+    dans <code>base/</code>. Remplace ce contenu par tes écrans.
+  </p>
+
+  <div class="fl-card" style="max-width:280px">
+    <div class="fl-label">Tes éléments (exemple)</div>
+    <div class="fl-value-serif" style="font-size:2rem;margin-top:6px">{{ nb_items }}</div>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,22 @@
+[Unit]
+Description=Site de base (Flask + gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sitebase
+Group=sitebase
+WorkingDirectory=/opt/site-base
+EnvironmentFile=/opt/site-base/.env
+ExecStart=/opt/site-base/.venv/bin/gunicorn -w 2 -b 127.0.0.1:8000 wsgi:app
+Restart=on-failure
+RestartSec=3
+# Durcissement léger
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/site-base/data
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# Empêche de committer une modification de la couche base/ dans un projet.
+# Active-le une fois :  git config core.hooksPath .githooks
+# Contournement volontaire (rare) :  ALLOW_BASE_EDIT=1 git commit ...
+#
+set -euo pipefail
+
+if [ "${ALLOW_BASE_EDIT:-}" = "1" ]; then
+  exit 0
+fi
+
+STAGED="$(git diff --cached --name-only -- base/ || true)"
+if [ -n "${STAGED}" ]; then
+  echo "✗ Commit refusé : la couche base/ ne doit pas être modifiée dans un projet."
+  echo "  Ton code va dans app/. Pour faire évoluer la base : « Mettre à jour la base »."
+  echo "${STAGED}" | sed 's/^/    base modifiée: /'
+  echo "  (Si tu es DANS le dépôt site-base source : ALLOW_BASE_EDIT=1 git commit ...)"
+  exit 1
+fi
+exit 0
