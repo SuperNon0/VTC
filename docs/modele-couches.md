@@ -46,8 +46,9 @@ echo "base/" >> .gitignore     # base/ n'est jamais committée dans un projet
 python run.py                  # http://127.0.0.1:8000
 ```
 
-> Tant que la version `2.0.0` du site-base n'est pas publiée en tag, vise la
-> branche : `BASE_REPO_REF=claude/v2-modele-couches python bootstrap_base.py`.
+> `bootstrap_base.py` prend automatiquement la dernière version « couches »
+> publiée (tag `2.0.0` ou supérieur). Pour figer une version précise en prod :
+> `python bootstrap_base.py --ref 2.0.0`.
 
 ## Comment la surcouche se branche (sans toucher la base)
 

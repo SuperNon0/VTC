@@ -4,9 +4,9 @@ Copie-colle le bloc ci-dessous à l'assistant qui migre un site existant vers le
 modèle en couches. Il intègre les deux garde-fous : **base non versionnée** et
 **développement sur une branche dédiée**.
 
-> Adapte `BASE_REPO_REF` : une fois la version `2.0.0` du site-base publiée,
-> remplace `claude/v2-modele-couches` par `2.0.0` (ou retire la variable pour
-> prendre la dernière version publiée).
+> La version `2.0.0` du site-base est publiée : `bootstrap_base.py` prend la
+> dernière version « couches » automatiquement (aucune variable à passer). Pour
+> figer une version précise : `python bootstrap_base.py --ref 2.0.0`.
 
 ---
 
@@ -18,7 +18,7 @@ Ce site doit adopter le « site-base », une fondation en DEUX COUCHES :
   site-base, récupérée par bootstrap_base.py. On n'y touche JAMAIS.
 - app/ = LE MÉTIER : les écrans et les données propres à CE site. C'est la SEULE
   chose que tu versionnes et modifies.
-Référence : https://github.com/SuperNon0/Site-base (branche claude/v2-modele-couches).
+Référence : https://github.com/SuperNon0/Site-base (dernière version publiée, tag 2.0.0).
 Lis d'abord, dans ce dépôt : README.md, CLAUDE.md, docs/modele-couches.md.
 
 TA MISSION — migrer ce site existant vers ce modèle SANS perdre de données ni
@@ -34,7 +34,7 @@ casser le site en production.
 3) base/ NON VERSIONNÉE :
    - Ajoute « base/ » au .gitignore. base/ ne doit JAMAIS être committée.
    - Récupère la fondation en local pour faire tourner le site :
-       BASE_REPO_REF=claude/v2-modele-couches python bootstrap_base.py
+       python bootstrap_base.py            # prend la dernière version publiée (2.0.0)
    - Si base/ était déjà committée : git rm -r --cached base/ (garde les fichiers).
 
 4) Déplace TOUT le code métier actuel dans app/ :
