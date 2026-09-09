@@ -15,6 +15,7 @@ INSTALL_DIR="/opt/site-base"
 SERVICE_USER="sitebase"
 REPO_URL="${1:-}"
 REPO_REF="${REPO_REF:-}"   # branche ou tag à installer (optionnel)
+BIND="${BIND:-}"          # adresse d'écoute gunicorn (ex. 0.0.0.0:8000). Vide → défaut 127.0.0.1:8000
 
 echo ">>> [1/6] Dépendances système"
 apt-get update -y
@@ -77,6 +78,14 @@ chmod 640 "${INSTALL_DIR}/.env"
 
 echo ">>> [6/6] systemd"
 cp "${INSTALL_DIR}/deploy/site-base.service" /etc/systemd/system/site-base.service
+# Écoute personnalisée (BIND) : ex. 0.0.0.0:8000 pour un accès par l'IP du conteneur.
+# Surcharge propre (survit aux mises à jour) ; sinon on garde le 127.0.0.1 par défaut.
+if [ -n "${BIND}" ]; then
+    mkdir -p /etc/systemd/system/site-base.service.d
+    printf '[Service]\nExecStart=\nExecStart=%s/.venv/bin/gunicorn -w 2 -b %s wsgi:app\n' \
+        "${INSTALL_DIR}" "${BIND}" > /etc/systemd/system/site-base.service.d/override.conf
+    echo "   écoute sur ${BIND}."
+fi
 systemctl daemon-reload
 systemctl enable site-base.service
 

@@ -206,11 +206,35 @@ Maquettes de référence : [`docs/maquettes-auth-v2/`](docs/maquettes-auth-v2/).
 | `CAP_*` | niveaux de permissions (ou `manage.py setup`). |
 | `BOTPANEL_URL` | active les notifications (vide = désactivées). |
 
-## Déploiement (Proxmox + Cloudflare)
+## Installation (Proxmox + Cloudflare)
 
-LXC prioritaire, service systemd, tunnel Cloudflare, mise à jour sans sudo
-(SIGHUP gunicorn). Scripts dans `deploy/` (`install_lxc.sh`, `site-base.service`,
-`update.sh`, `set_email.sh`, `reset_admin.sh`). Guide complet :
+`install.sh` détecte automatiquement **deux modes**.
+
+**Option 1 — une commande, sur le shell du nœud Proxmox** (crée le conteneur LXC
+Debian **et** installe VTC dedans, écoute sur l'IP du conteneur) :
+
+```bash
+ADMIN_EMAIL=toi@gmail.com \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/SuperNon0/VTC/main/install.sh)"
+```
+
+> Options : `CTID=130 STORAGE=local-lvm BRIDGE=vmbr0 ADMIN_PASSWORD=… REPO_REF=… BIND=0.0.0.0:8000`.
+> Tant que `main` ne porte pas encore le nouveau socle, ajoute
+> `REPO_REF=claude/migration-nouveau-socle` (et vise ce chemin dans l'URL).
+> En passant `ADMIN_EMAIL=` dès l'install, ton super-admin est créé d'emblée avec
+> ton e-mail Google (login mot de passe **et** Cloudflare) — rien à régler ensuite.
+
+**Option 2 — dans un conteneur / une VM déjà prête** (installe en place) :
+
+```bash
+sudo bash /opt/site-base/deploy/install_lxc.sh   # venv + amorçage base/ + service systemd
+```
+
+Détails : conteneur `site-base` sous `/opt/site-base`, service systemd
+`site-base`, `base/` récupérée par `bootstrap_base.py` (jamais versionnée),
+mise à jour sans sudo (SIGHUP gunicorn). Pour exposer publiquement, mets un
+**tunnel Cloudflare** devant et passe `CF_VERIFY_JWT=true` +
+`SESSION_COOKIE_SECURE=true`. Guide complet :
 [`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md).
 
 ---
