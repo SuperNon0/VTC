@@ -14,6 +14,7 @@ set -euo pipefail
 INSTALL_DIR="/opt/site-base"
 SERVICE_USER="sitebase"
 REPO_URL="${1:-}"
+REPO_REF="${REPO_REF:-}"   # branche ou tag à installer (optionnel)
 
 echo ">>> [1/6] Dépendances système"
 apt-get update -y
@@ -28,9 +29,10 @@ fi
 echo ">>> [3/6] Code source"
 if [ -n "${REPO_URL}" ]; then
     if [ -d "${INSTALL_DIR}/.git" ]; then
-        git -C "${INSTALL_DIR}" pull
+        git -C "${INSTALL_DIR}" fetch origin "${REPO_REF:-HEAD}"
+        git -C "${INSTALL_DIR}" checkout -q FETCH_HEAD
     else
-        git clone "${REPO_URL}" "${INSTALL_DIR}"
+        git clone ${REPO_REF:+--branch "${REPO_REF}"} "${REPO_URL}" "${INSTALL_DIR}"
     fi
 fi
 mkdir -p "${INSTALL_DIR}/data"
