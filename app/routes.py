@@ -199,7 +199,8 @@ def nouvelle_course():
         lieux_json=[{"id": l["id"], "nom": l["nom"], "adresse": l["adresse"] or "",
                      "ville_id": l["ville_id"]} for l in lieux],
         tarifs_json=[{"id": t["id"], "prix": t["prix"],
-                      "dep": t["lieu_depart_id"], "arr": t["lieu_arrivee_id"]}
+                      "dep_lieu": t["lieu_depart_id"], "dep_ville": t["ville_depart_id"],
+                      "arr_lieu": t["lieu_arrivee_id"], "arr_ville": t["ville_arrivee_id"]}
                      for t in tarifs],
         ai_on=ai_configured(),
     )
@@ -570,20 +571,34 @@ def calendrier_save():
 @login_required
 def tarifs():
     return render_template("config_tarifs.html",
-                           tarifs=C.liste_tarifs(), lieux=C.liste_lieux())
+                           tarifs=C.liste_tarifs(), lieux=C.liste_lieux(),
+                           villes=C.liste_villes())
+
+
+def _parse_endpoint(val):
+    """Décode une extrémité de tarif : 'l:<id>' (lieu) ou 'v:<id>' (ville).
+
+    Renvoie (lieu_id, ville_id) — au plus un des deux est renseigné.
+    """
+    val = (val or "").strip()
+    if val.startswith("l:"):
+        return _int_or_none(val[2:]), None
+    if val.startswith("v:"):
+        return None, _int_or_none(val[2:])
+    return None, None
 
 
 @config_bp.route("/reglages/tarifs/ajouter", methods=["POST"])
 @login_required
 def tarif_ajouter():
     prix = _parse_prix(request.form.get("prix"))
-    dep = _int_or_none(request.form.get("lieu_depart_id"))
-    arr = _int_or_none(request.form.get("lieu_arrivee_id"))
-    if prix is None or (dep is None and arr is None):
-        flash("Choisis au moins un lieu (départ et/ou arrivée) et un prix valide.",
-              "error")
+    dep_lieu, dep_ville = _parse_endpoint(request.form.get("depart"))
+    arr_lieu, arr_ville = _parse_endpoint(request.form.get("arrivee"))
+    if prix is None or not (dep_lieu or dep_ville or arr_lieu or arr_ville):
+        flash("Choisis au moins un départ ou une arrivée (lieu ou ville) et un "
+              "prix valide.", "error")
         return redirect(url_for("config.tarifs"))
-    C.creer_tarif(prix, dep, arr)
+    C.creer_tarif(prix, dep_lieu, dep_ville, arr_lieu, arr_ville)
     flash("Grille tarifaire ajoutée ✓", "success")
     return redirect(url_for("config.tarifs"))
 
@@ -592,13 +607,13 @@ def tarif_ajouter():
 @login_required
 def tarif_modifier(tarif_id: int):
     prix = _parse_prix(request.form.get("prix"))
-    dep = _int_or_none(request.form.get("lieu_depart_id"))
-    arr = _int_or_none(request.form.get("lieu_arrivee_id"))
-    if prix is None or (dep is None and arr is None):
-        flash("Choisis au moins un lieu (départ et/ou arrivée) et un prix valide.",
-              "error")
+    dep_lieu, dep_ville = _parse_endpoint(request.form.get("depart"))
+    arr_lieu, arr_ville = _parse_endpoint(request.form.get("arrivee"))
+    if prix is None or not (dep_lieu or dep_ville or arr_lieu or arr_ville):
+        flash("Choisis au moins un départ ou une arrivée (lieu ou ville) et un "
+              "prix valide.", "error")
         return redirect(url_for("config.tarifs"))
-    C.maj_tarif(tarif_id, prix, dep, arr)
+    C.maj_tarif(tarif_id, prix, dep_lieu, dep_ville, arr_lieu, arr_ville)
     flash("Grille tarifaire mise à jour ✓", "success")
     return redirect(url_for("config.tarifs"))
 

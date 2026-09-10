@@ -41,17 +41,23 @@ CREATE TABLE IF NOT EXISTS lieux (
     FOREIGN KEY (ville_id) REFERENCES villes(id) ON DELETE SET NULL
 );
 
--- Grilles tarifaires (cahier §6.3) : un tarif relie un lieu de départ à un lieu
--- d'arrivée (l'un des deux peut être vide) → auto-sélection à la création.
+-- Grilles tarifaires (cahier §6.3) : un tarif relie un départ à une arrivée.
+-- Chaque extrémité est SOIT un lieu fréquent (lieu_*_id), SOIT une ville
+-- (ville_*_id) — l'une des deux extrémités peut rester vide (joker) →
+-- auto-sélection à la création d'une course.
 CREATE TABLE IF NOT EXISTS tarifs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     libelle         TEXT NOT NULL,
     prix            REAL NOT NULL,
     lieu_depart_id  INTEGER,
     lieu_arrivee_id INTEGER,
+    ville_depart_id  INTEGER,
+    ville_arrivee_id INTEGER,
     ordre           INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (lieu_depart_id)  REFERENCES lieux(id) ON DELETE SET NULL,
-    FOREIGN KEY (lieu_arrivee_id) REFERENCES lieux(id) ON DELETE SET NULL
+    FOREIGN KEY (lieu_arrivee_id) REFERENCES lieux(id) ON DELETE SET NULL,
+    FOREIGN KEY (ville_depart_id)  REFERENCES villes(id) ON DELETE SET NULL,
+    FOREIGN KEY (ville_arrivee_id) REFERENCES villes(id) ON DELETE SET NULL
 );
 
 -- Courses (cahier §5). Créateur ≠ conducteur assigné (tous deux → comptes.id).

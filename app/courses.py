@@ -253,10 +253,22 @@ def _nom_lieu(lieu_id: int | None) -> str | None:
     return row["nom"] if row else None
 
 
-def _libelle_tarif(lieu_depart_id: int | None, lieu_arrivee_id: int | None) -> str:
-    """Libellé auto d'un tarif à partir des lieux (évite la saisie en double)."""
-    dep = _nom_lieu(lieu_depart_id)
-    arr = _nom_lieu(lieu_arrivee_id)
+def _nom_ville(ville_id: int | None) -> str | None:
+    if not ville_id:
+        return None
+    row = get_db().execute("SELECT nom FROM villes WHERE id = ?", (ville_id,)).fetchone()
+    return row["nom"] if row else None
+
+
+def _nom_extremite(lieu_id: int | None, ville_id: int | None) -> str | None:
+    """Nom d'une extrémité de tarif : un lieu fréquent OU une ville."""
+    return _nom_lieu(lieu_id) or _nom_ville(ville_id)
+
+
+def _libelle_tarif(dep_lieu, dep_ville, arr_lieu, arr_ville) -> str:
+    """Libellé auto d'un tarif (« Grau-du-Roi → Aigues-Mortes »), lieu ou ville."""
+    dep = _nom_extremite(dep_lieu, dep_ville)
+    arr = _nom_extremite(arr_lieu, arr_ville)
     if dep and arr:
         return f"{dep} → {arr}"
     if arr:
@@ -267,39 +279,43 @@ def _libelle_tarif(lieu_depart_id: int | None, lieu_arrivee_id: int | None) -> s
 
 
 def liste_tarifs() -> list:
-    """Tarifs avec les noms de lieux résolus (pour l'affichage et l'auto-match)."""
+    """Tarifs avec les noms d'extrémités résolus (lieu OU ville) — affichage + auto-match."""
     return get_db().execute(
-        "SELECT t.*, ld.nom AS depart_nom, la.nom AS arrivee_nom "
+        "SELECT t.*, "
+        "COALESCE(ld.nom, vd.nom) AS depart_nom, "
+        "COALESCE(la.nom, va.nom) AS arrivee_nom "
         "FROM tarifs t "
-        "LEFT JOIN lieux ld ON ld.id = t.lieu_depart_id "
-        "LEFT JOIN lieux la ON la.id = t.lieu_arrivee_id "
+        "LEFT JOIN lieux  ld ON ld.id = t.lieu_depart_id "
+        "LEFT JOIN lieux  la ON la.id = t.lieu_arrivee_id "
+        "LEFT JOIN villes vd ON vd.id = t.ville_depart_id "
+        "LEFT JOIN villes va ON va.id = t.ville_arrivee_id "
         "ORDER BY t.ordre, t.libelle"
     ).fetchall()
 
 
-def creer_tarif(prix: float, lieu_depart_id: int | None,
-                lieu_arrivee_id: int | None) -> int:
+def creer_tarif(prix: float, dep_lieu=None, dep_ville=None,
+                arr_lieu=None, arr_ville=None) -> int:
     db = get_db()
     ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM tarifs")
              .fetchone()[0])
-    libelle = _libelle_tarif(lieu_depart_id, lieu_arrivee_id)
+    libelle = _libelle_tarif(dep_lieu, dep_ville, arr_lieu, arr_ville)
     cur = db.execute(
-        "INSERT INTO tarifs (libelle, prix, lieu_depart_id, lieu_arrivee_id, ordre) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (libelle, prix, lieu_depart_id, lieu_arrivee_id, ordre),
+        "INSERT INTO tarifs (libelle, prix, lieu_depart_id, lieu_arrivee_id, "
+        "ville_depart_id, ville_arrivee_id, ordre) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville, ordre),
     )
     db.commit()
     return cur.lastrowid
 
 
-def maj_tarif(tarif_id: int, prix: float, lieu_depart_id: int | None,
-              lieu_arrivee_id: int | None) -> None:
+def maj_tarif(tarif_id: int, prix: float, dep_lieu=None, dep_ville=None,
+              arr_lieu=None, arr_ville=None) -> None:
     db = get_db()
-    libelle = _libelle_tarif(lieu_depart_id, lieu_arrivee_id)
+    libelle = _libelle_tarif(dep_lieu, dep_ville, arr_lieu, arr_ville)
     db.execute(
         "UPDATE tarifs SET libelle = ?, prix = ?, lieu_depart_id = ?, "
-        "lieu_arrivee_id = ? WHERE id = ?",
-        (libelle, prix, lieu_depart_id, lieu_arrivee_id, tarif_id),
+        "lieu_arrivee_id = ?, ville_depart_id = ?, ville_arrivee_id = ? WHERE id = ?",
+        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville, tarif_id),
     )
     db.commit()
 
@@ -320,6 +336,13 @@ def ensure_schema() -> None:
     cols = {r[1] for r in db.execute("PRAGMA table_info(lieux)").fetchall()}
     if cols and "ville_id" not in cols:   # table présente mais colonne manquante
         db.execute("ALTER TABLE lieux ADD COLUMN ville_id INTEGER")
+        db.commit()
+    # Tarifs ville → ville : colonnes ajoutées après coup sur une base existante.
+    tcols = {r[1] for r in db.execute("PRAGMA table_info(tarifs)").fetchall()}
+    if tcols:
+        for col in ("ville_depart_id", "ville_arrivee_id"):
+            if col not in tcols:
+                db.execute(f"ALTER TABLE tarifs ADD COLUMN {col} INTEGER")
         db.commit()
 
 

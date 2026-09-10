@@ -193,6 +193,7 @@ function villeSel(field) {
 function onVille(field) {
   document.getElementById(field + '_lieu_id').value = '';
   showLieux(field, document.getElementById(field).value);
+  autoMatchTarif();   // changer de ville peut suffire à retrouver un tarif ville→ville
 }
 
 // ── Lieux : autocomplétion filtrée par la ville choisie (§6.2) ───────────────
@@ -266,17 +267,27 @@ function choisirLieu(field, id) {
 function closeList(list) { if (list) { list.innerHTML = ''; list.classList.remove('open'); } }
 
 // ── Auto-sélection de la grille tarifaire selon départ + arrivée (§6.3) ──────
+// Chaque extrémité d'un tarif peut être un lieu OU une ville : on fait
+// correspondre le lieu choisi (…_lieu_id) et/ou la ville choisie (ville-…).
 function autoMatchTarif() {
-  var dep = parseInt(document.getElementById('depart_lieu_id').value, 10) || null;
-  var arr = parseInt(document.getElementById('arrivee_lieu_id').value, 10) || null;
-  if (!dep && !arr) return;
+  var depL = parseInt(document.getElementById('depart_lieu_id').value, 10) || null;
+  var arrL = parseInt(document.getElementById('arrivee_lieu_id').value, 10) || null;
+  var depV = villeSel('depart');
+  var arrV = villeSel('arrivee');
+  if (!depL && !arrL && !depV && !arrV) return;
+  // Un côté : -1 = imposé par le tarif mais non satisfait ; 0 = joker ; 1 = match.
+  function side(tl, tv, fl, fv) {
+    if (tl == null && tv == null) return 0;
+    if (tl != null && fl != null && tl === fl) return 1;
+    if (tv != null && fv != null && tv === fv) return 1;
+    return -1;
+  }
   var best = null, bestScore = 0;
   (window.TARIFS || []).forEach(function (t) {
-    // Un côté non renseigné du tarif = joker.
-    var okDep = (t.dep == null) || (t.dep === dep);
-    var okArr = (t.arr == null) || (t.arr === arr);
-    if (!okDep || !okArr) return;
-    var score = (t.dep && t.dep === dep ? 1 : 0) + (t.arr && t.arr === arr ? 1 : 0);
+    var sd = side(t.dep_lieu, t.dep_ville, depL, depV);
+    var sa = side(t.arr_lieu, t.arr_ville, arrL, arrV);
+    if (sd < 0 || sa < 0) return;
+    var score = sd + sa;
     if (score > bestScore) { bestScore = score; best = t; }
   });
   if (best && bestScore > 0) {
