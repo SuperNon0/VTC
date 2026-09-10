@@ -44,18 +44,15 @@
       </form>
     </details>
 
-    {% if not villes %}
-    <div class="fl-card" style="text-align:center;color:var(--muted)"><p style="margin:0">Aucune ville pour l'instant.</p></div>
+    {# La liste complète vit sur une page à part (évite un long défilement ici). #}
+    {% if villes %}
+    <a class="btn ghost" href="{{ url_for('config.villes') }}"
+       style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <span>📋 Voir toutes les villes ({{ villes|length }})</span><span>→</span>
+    </a>
+    {% else %}
+    <div class="fl-card" style="text-align:center;color:var(--muted)"><p style="margin:0">Aucune ville pour l'instant. Ajoute-en une ci-dessus.</p></div>
     {% endif %}
-    {% for v in villes %}
-    <div class="fl-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
-      <b>🏙️ {{ v.nom }}</b>
-      <form method="post" action="{{ url_for('config.ville_supprimer', ville_id=v.id) }}"
-            onsubmit="return confirm('Supprimer cette ville ? Les lieux liés perdront leur ville.')">
-        <button type="submit" class="btn danger small">Supprimer</button>
-      </form>
-    </div>
-    {% endfor %}
   </section>
 
   {# ── Lieux fréquents ───────────────────────────────────────────────────── #}

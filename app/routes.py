@@ -739,6 +739,13 @@ def lieux():
                            lieux=C.liste_lieux(), villes=C.liste_villes())
 
 
+@config_bp.route("/reglages/villes")
+@login_required
+def villes():
+    """Page dédiée : toutes les villes par ordre alphabétique (+ suppression)."""
+    return render_template("config_villes.html", villes=C.liste_villes_alpha())
+
+
 @config_bp.route("/reglages/villes/ajouter", methods=["POST"])
 @login_required
 def ville_ajouter():
@@ -767,7 +774,10 @@ def ville_ajouter_masse():
 def ville_supprimer(ville_id: int):
     C.supprimer_ville(ville_id)
     flash("Ville supprimée.", "info")
-    return redirect(url_for("config.lieux"))
+    # Revient à la page d'où l'on vient (liste des villes, ou écran Lieux).
+    ref = request.referrer or ""
+    return redirect(url_for("config.villes") if "villes" in ref
+                    else url_for("config.lieux"))
 
 
 @config_bp.route("/reglages/lieux/ajouter", methods=["POST"])

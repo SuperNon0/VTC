@@ -1,0 +1,34 @@
+{% extends "_layout.html" %}
+{% block title %}Villes desservies — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}villes{% endblock %}
+
+{% block app_content %}
+<div class="acct-wrap" style="max-width:560px">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+    <a href="{{ url_for('config.lieux') }}" class="btn ghost small">← Retour aux lieux</a>
+    {% if villes %}<span class="tx-muted">{{ villes|length }} ville{{ 's' if villes|length > 1 else '' }}</span>{% endif %}
+  </div>
+
+  <section class="acct-section">
+    <h3>Toutes les villes desservies</h3>
+    <p class="access-note" style="text-align:left;margin:0 0 12px">
+      Classées par ordre alphabétique. Pour en ajouter, reviens à l'écran
+      « Lieux fréquents ».
+    </p>
+
+    {% if not villes %}
+    <div class="fl-card" style="text-align:center;color:var(--muted)"><p style="margin:0">Aucune ville pour l'instant.</p></div>
+    {% endif %}
+
+    {% for v in villes %}
+    <div class="fl-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+      <b>🏙️ {{ v.nom }}</b>
+      <form method="post" action="{{ url_for('config.ville_supprimer', ville_id=v.id) }}"
+            onsubmit="return confirm('Supprimer « {{ v.nom }} » ?')">
+        <button type="submit" class="btn danger small">Supprimer</button>
+      </form>
+    </div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

@@ -310,6 +310,12 @@ def liste_villes() -> list:
     ).fetchall()
 
 
+def liste_villes_alpha() -> list:
+    """Villes triées par ordre alphabétique (insensible aux accents)."""
+    villes = get_db().execute("SELECT * FROM villes").fetchall()
+    return sorted(villes, key=lambda v: _sans_accents(v["nom"]))
+
+
 def creer_ville(nom: str) -> int:
     db = get_db()
     ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM villes")
