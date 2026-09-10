@@ -300,7 +300,7 @@ body.has-bottomnav::after {
      au lieu de réserver toute la zone d'encoche qui laissait une large bande
      sombre sous les icônes. Le fond de la barre + le filet `::after` couvrent
      malgré tout tout le bas, donc aucun fond sombre n'apparaît. */
-  padding: 9px 6px max(6px, calc(env(safe-area-inset-bottom) - 22px));
+  padding: 9px 6px max(14px, calc(env(safe-area-inset-bottom) - 12px));
 }
 .bn-item {
   flex: 1;
