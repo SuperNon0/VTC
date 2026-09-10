@@ -264,6 +264,18 @@
    ═════════════════════════════════════════════════════════════════════════ */
 body.has-bottomnav { padding-bottom: calc(74px + env(safe-area-inset-bottom)); }
 
+/* La zone d'encoche du bas (home indicator, iPhone) prend la couleur de la barre
+   → aucune bande sombre ne peut apparaître sous les raccourcis (PWA iOS). */
+body.has-bottomnav::after {
+  content: "";
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: env(safe-area-inset-bottom);
+  background: var(--surface);
+  z-index: 59;
+  pointer-events: none;
+}
+
 .bottomnav {
   position: fixed;
   left: 0; right: 0; bottom: 0;
