@@ -751,6 +751,17 @@ def ville_ajouter():
     return redirect(url_for("config.lieux"))
 
 
+@config_bp.route("/reglages/villes/ajouter-masse", methods=["POST"])
+@login_required
+def ville_ajouter_masse():
+    noms = (request.form.get("noms") or "").splitlines()
+    n = C.ajouter_villes(noms)
+    flash(f"{n} ville(s) ajoutée(s) ✓" if n
+          else "Aucune nouvelle ville (déjà présentes ?).",
+          "success" if n else "info")
+    return redirect(url_for("config.lieux"))
+
+
 @config_bp.route("/reglages/villes/<int:ville_id>/supprimer", methods=["POST"])
 @login_required
 def ville_supprimer(ville_id: int):

@@ -325,6 +325,29 @@ def supprimer_ville(ville_id: int) -> None:
     db.commit()
 
 
+def ajouter_villes(noms) -> int:
+    """Ajoute plusieurs villes d'un coup (coller-liste), en ignorant les doublons
+    (insensible à la casse et aux accents). Renvoie le nombre réellement ajouté."""
+    db = get_db()
+    existing = {_sans_accents(r["nom"])
+                for r in db.execute("SELECT nom FROM villes").fetchall()}
+    ordre = db.execute("SELECT COALESCE(MAX(ordre), 0) FROM villes").fetchone()[0]
+    n = 0
+    for nom in noms:
+        nom = (nom or "").strip()
+        if not nom:
+            continue
+        key = _sans_accents(nom)
+        if key in existing:
+            continue
+        existing.add(key)
+        ordre += 1
+        db.execute("INSERT INTO villes (nom, ordre) VALUES (?, ?)", (nom, ordre))
+        n += 1
+    db.commit()
+    return n
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Lieux fréquents (cahier §6.2) — rattachés à une ville
 # ─────────────────────────────────────────────────────────────────────────────

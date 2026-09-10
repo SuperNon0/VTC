@@ -20,13 +20,29 @@
       chaque lieu et à la création d'une course (on choisit d'abord la ville).
     </p>
 
-    <div class="fl-card" style="margin-bottom:16px">
+    <div class="fl-card" style="margin-bottom:10px">
       <form method="post" action="{{ url_for('config.ville_ajouter') }}"
             style="display:flex;gap:.4rem">
         <input class="tx-input" type="text" name="nom" placeholder="Ex : Nîmes" required>
         <button type="submit" class="btn primary">Ajouter</button>
       </form>
     </div>
+
+    {# Ajout en masse : coller une liste (une ville par ligne). #}
+    <details class="fl-card" style="margin-bottom:16px">
+      <summary style="cursor:pointer;color:var(--accent)">+ Ajouter plusieurs villes (coller une liste)</summary>
+      <form method="post" action="{{ url_for('config.ville_ajouter_masse') }}" style="margin-top:12px">
+        <label class="fl-label">Une ville par ligne</label>
+        <textarea class="tx-input tx-area" name="noms" rows="6"
+                  placeholder="Nîmes&#10;Montpellier&#10;Aigues-Mortes&#10;…"></textarea>
+        <p class="access-note" style="text-align:left;margin:.3rem 0 .6rem">
+          Les doublons sont ignorés automatiquement.
+        </p>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit" class="btn primary">Tout ajouter</button>
+        </div>
+      </form>
+    </details>
 
     {% if not villes %}
     <div class="fl-card" style="text-align:center;color:var(--muted)"><p style="margin:0">Aucune ville pour l'instant.</p></div>
