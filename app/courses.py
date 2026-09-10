@@ -215,10 +215,30 @@ def supprimer_client(client_id: int) -> None:
 
 
 def client_adresses(row) -> list:
+    """Adresses habituelles d'un client, normalisées en dicts {label, adresse}.
+
+    Rétro-compatible : les anciennes adresses (simples chaînes JSON) sont
+    converties en {label:"", adresse:<chaîne>}. Les vides sont ignorées.
+    """
     try:
-        return json.loads(row["adresses"] or "[]")
+        raw = json.loads(row["adresses"] or "[]")
     except (ValueError, TypeError):
         return []
+    return _normaliser_adresses(raw)
+
+
+def _normaliser_adresses(raw) -> list:
+    out = []
+    for it in (raw or []):
+        if isinstance(it, dict):
+            adresse = (it.get("adresse") or "").strip()
+            label = (it.get("label") or "").strip()
+        else:
+            adresse = str(it or "").strip()
+            label = ""
+        if adresse:
+            out.append({"label": label, "adresse": adresse})
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────

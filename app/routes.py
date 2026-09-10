@@ -362,7 +362,8 @@ def api_clients_search():
         out.append({
             "id": row["id"], "nom": row["nom"],
             "telephone": row["telephone"] or "",
-            "adresses": C.client_adresses(row),
+            "notes": row["notes"] or "",
+            "adresses": C.client_adresses(row),   # [{label, adresse}, …]
         })
     return jsonify(clients=out)
 
@@ -564,16 +565,16 @@ def calendrier_save():
     return redirect(url_for("config.calendrier"))
 
 
-# ── Grilles tarifaires (cahier §6.3) — super-admin uniquement ────────────────
+# ── Grilles tarifaires (cahier §6.3) — accessible à tout conducteur actif ────
 @config_bp.route("/reglages/tarifs")
-@super_admin_required
+@login_required
 def tarifs():
     return render_template("config_tarifs.html",
                            tarifs=C.liste_tarifs(), lieux=C.liste_lieux())
 
 
 @config_bp.route("/reglages/tarifs/ajouter", methods=["POST"])
-@super_admin_required
+@login_required
 def tarif_ajouter():
     prix = _parse_prix(request.form.get("prix"))
     dep = _int_or_none(request.form.get("lieu_depart_id"))
@@ -588,7 +589,7 @@ def tarif_ajouter():
 
 
 @config_bp.route("/reglages/tarifs/<int:tarif_id>/modifier", methods=["POST"])
-@super_admin_required
+@login_required
 def tarif_modifier(tarif_id: int):
     prix = _parse_prix(request.form.get("prix"))
     dep = _int_or_none(request.form.get("lieu_depart_id"))
@@ -603,7 +604,7 @@ def tarif_modifier(tarif_id: int):
 
 
 @config_bp.route("/reglages/tarifs/<int:tarif_id>/supprimer", methods=["POST"])
-@super_admin_required
+@login_required
 def tarif_supprimer(tarif_id: int):
     C.supprimer_tarif(tarif_id)
     flash("Grille tarifaire supprimée.", "info")
@@ -735,8 +736,15 @@ def estimation_toggle():
 @config_bp.route("/reglages/lieux")
 @login_required
 def lieux():
+    # Clients + leurs adresses attitrées (affichés en bas de l'écran Lieux).
+    clients = []
+    for r in C.liste_clients():
+        adrs = C.client_adresses(r)
+        if adrs:
+            clients.append({"id": r["id"], "nom": r["nom"], "adresses_list": adrs})
     return render_template("config_lieux.html",
-                           lieux=C.liste_lieux(), villes=C.liste_villes())
+                           lieux=C.liste_lieux(), villes=C.liste_villes(),
+                           clients=clients)
 
 
 @config_bp.route("/reglages/villes")
@@ -823,7 +831,7 @@ def client_ajouter():
         flash("Le nom du client est requis.", "error")
         return redirect(url_for("config.clients"))
     tel = (request.form.get("telephone") or "").strip() or None
-    adresses = _split_adresses(request.form.get("adresses"))
+    adresses = _parse_adresses(request.form)
     notes = (request.form.get("notes") or "").strip() or None
     C.creer_client(nom, tel, adresses, notes)
     flash("Client enregistré ✓", "success")
@@ -838,7 +846,7 @@ def client_modifier(client_id: int):
         flash("Le nom du client est requis.", "error")
         return redirect(url_for("config.clients"))
     tel = (request.form.get("telephone") or "").strip() or None
-    adresses = _split_adresses(request.form.get("adresses"))
+    adresses = _parse_adresses(request.form)
     notes = (request.form.get("notes") or "").strip() or None
     C.maj_client(client_id, nom, tel, adresses, notes)
     flash("Client mis à jour ✓", "success")
@@ -861,6 +869,21 @@ def _parse_prix(v):
         return None
 
 
-def _split_adresses(v):
-    """Une adresse par ligne dans le textarea."""
-    return [line.strip() for line in (v or "").splitlines() if line.strip()]
+def _parse_adresses(form):
+    """Lit les adresses habituelles d'un client depuis le formulaire.
+
+    Format courant : champ caché `adresses_json` = liste JSON de
+    {label, adresse}. Repli historique : `adresses` = une adresse par ligne.
+    Renvoie une liste normalisée de dicts {label, adresse} (vides ignorés).
+    """
+    import json as _json
+    raw = form.get("adresses_json")
+    if raw:
+        try:
+            data = _json.loads(raw)
+        except (ValueError, TypeError):
+            data = []
+        return C._normaliser_adresses(data)
+    # Repli : ancien textarea (une adresse par ligne, sans libellé).
+    lignes = [l.strip() for l in (form.get("adresses") or "").splitlines() if l.strip()]
+    return C._normaliser_adresses(lignes)

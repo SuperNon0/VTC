@@ -107,7 +107,7 @@ def label_compte(c) -> str:
     email = (_course_get(c, "email") or "").strip()
     if email:
         return email
-    return ("Super-admin (accès local)"
+    return ("Admin (accès local)"
             if _course_get(c, "role") == "super_admin" else "Compte sans nom")
 
 

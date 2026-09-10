@@ -117,5 +117,39 @@
     </div>
     {% endfor %}
   </section>
+
+  {# ── Adresses des clients ──────────────────────────────────────────────── #}
+  <section class="acct-section">
+    <h3>Adresses des clients</h3>
+    <p class="access-note" style="text-align:left;margin:0 0 12px">
+      Les adresses nommées enregistrées sur tes clients (Maison, Travail…).
+      Déplie un client pour les voir. Elles sont aussi proposées à la création
+      d'une course. Pour les modifier, va dans
+      <a href="{{ url_for('config.clients') }}">Clients habitués</a>.
+    </p>
+
+    {% if not clients %}
+    <div class="fl-card" style="text-align:center;color:var(--muted)">
+      <p style="margin:0">Aucun client n'a d'adresse nommée pour l'instant.</p>
+    </div>
+    {% endif %}
+
+    {% for cl in clients %}
+    <details class="fl-card" style="margin-bottom:8px">
+      <summary style="cursor:pointer">
+        <b>👤 {{ cl.nom }}</b>
+        <span class="tx-muted"> · {{ cl.adresses_list|length }} adresse{{ 's' if cl.adresses_list|length > 1 else '' }}</span>
+      </summary>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:.4rem">
+        {% for a in cl.adresses_list %}
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.45rem .6rem">
+          {% if a.label %}<b>🏠 {{ a.label }}</b><br>{% endif %}
+          <span class="access-note" style="text-align:left">📍 {{ a.adresse }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </section>
 </div>
 {% endblock %}

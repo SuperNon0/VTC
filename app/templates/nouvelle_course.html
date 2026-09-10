@@ -19,7 +19,7 @@
     <p class="access-note" style="text-align:left;margin:.4rem 0 0">
       L'extraction automatique n'est pas encore configurée.
       {% if is_super_admin %}Règle-la dans <a href="{{ url_for('config.ia') }}">Paramètres → Extraction IA</a>.
-      {% else %}Le super-admin peut l'activer dans les paramètres.{% endif %}
+      {% else %}L'admin peut l'activer dans les paramètres.{% endif %}
       Tu peux remplir le formulaire à la main ci-dessous.
     </p>
     {% endif %}
@@ -202,19 +202,39 @@ function showLieux(field, q) {
   var list = document.getElementById('ac-' + field);
   var vid = villeSel(field);
   q = (q || '').trim().toLowerCase();
-  // Ni ville ni texte → on n'affiche rien (évite de tout déballer).
-  if (!vid && !q) { closeList(list); autoMatchTarif(); return; }
-  var res = (window.LIEUX || []).filter(function (l) {
-    if (vid && l.ville_id !== vid) return false;            // filtre par ville
-    if (!q) return true;                                    // ville seule → tous ses lieux
-    return l.nom.toLowerCase().indexOf(q) !== -1 ||
-           (l.adresse && l.adresse.toLowerCase().indexOf(q) !== -1);
-  }).slice(0, 8);
-  if (!res.length) { closeList(list); autoMatchTarif(); return; }
-  list.innerHTML = res.map(function (l) {
-    return '<div class="tx-ac-item" data-id="' + l.id + '" data-field="' + field + '">' +
-      '<b>' + esc(l.nom) + '</b>' +
-      (l.adresse ? ' <span class="tx-muted">' + esc(l.adresse) + '</span>' : '') + '</div>';
+  var items = [];   // suggestions unifiées : adresses du client + lieux fréquents
+
+  // 1) Adresses nommées du client sélectionné (Maison, Travail…), non filtrées
+  //    par ville : « maison » propose l'adresse « Maison » du client.
+  (window.CLIENT_ADR || []).forEach(function (a) {
+    var lbl = (a.label || '').toLowerCase(), adr = (a.adresse || '').toLowerCase();
+    if (!q || lbl.indexOf(q) !== -1 || adr.indexOf(q) !== -1) {
+      items.push({ client: true, label: a.label, adresse: a.adresse });
+    }
+  });
+
+  // 2) Lieux fréquents globaux (filtrés par la ville choisie).
+  if (vid || q) {
+    (window.LIEUX || []).filter(function (l) {
+      if (vid && l.ville_id !== vid) return false;
+      if (!q) return true;
+      return l.nom.toLowerCase().indexOf(q) !== -1 ||
+             (l.adresse && l.adresse.toLowerCase().indexOf(q) !== -1);
+    }).slice(0, 8).forEach(function (l) {
+      items.push({ id: l.id, label: l.nom, adresse: l.adresse });
+    });
+  }
+
+  if (!items.length) { closeList(list); autoMatchTarif(); return; }
+  list.innerHTML = items.map(function (it) {
+    if (it.client) {
+      var t = it.label ? ('🏠 ' + esc(it.label)) : '📍';
+      return '<div class="tx-ac-item" data-client="1" data-adr="' + esc(it.adresse) + '">' +
+        '<b>' + t + '</b> <span class="tx-muted">' + esc(it.adresse) + '</span></div>';
+    }
+    return '<div class="tx-ac-item" data-id="' + it.id + '">' +
+      '<b>' + esc(it.label) + '</b>' +
+      (it.adresse ? ' <span class="tx-muted">' + esc(it.adresse) + '</span>' : '') + '</div>';
   }).join('');
   list.classList.add('open');
 }
@@ -232,7 +252,13 @@ function choisirLieu(field, id) {
 ['depart', 'arrivee'].forEach(function (field) {
   document.getElementById('ac-' + field).addEventListener('click', function (e) {
     var it = e.target.closest('.tx-ac-item');
-    if (it) choisirLieu(field, +it.dataset.id);
+    if (!it) return;
+    if (it.dataset.client) {          // adresse nommée du client → remplit le champ
+      pickAdr(field, it.dataset.adr);
+      closeList(this);
+    } else {                          // lieu fréquent global → relie le lieu (auto-tarif)
+      choisirLieu(field, +it.dataset.id);
+    }
   });
 });
 function closeList(list) { if (list) { list.innerHTML = ''; list.classList.remove('open'); } }
@@ -336,10 +362,14 @@ function choisirClient(c) {
   document.getElementById('client_nom').value = c.nom || '';
   document.getElementById('client_tel').value = c.telephone || '';
   document.getElementById('client_id').value = c.id || '';
+  // Reprend aussi les notes du client (s'il y en a), sans écraser une saisie.
+  var notes = document.getElementById('notes');
+  if (notes && c.notes && !notes.value.trim()) notes.value = c.notes;
+  // Adresses nommées du client : [{label, adresse}, …].
   window.CLIENT_ADR = c.adresses || [];
   renderClientAdr();
   // Pré-remplit le départ avec la 1re adresse habituelle (modifiable au clic).
-  if (window.CLIENT_ADR.length) pickAdr('depart', window.CLIENT_ADR[0]);
+  if (window.CLIENT_ADR.length) pickAdr('depart', window.CLIENT_ADR[0].adresse);
   closeList(document.getElementById('ac-list'));
 }
 
@@ -352,8 +382,9 @@ function renderClientAdr() {
     var box = document.getElementById('cli-adr-' + field);
     if (!box) return;
     box.innerHTML = adrs.map(function (a) {
-      return '<button type="button" class="tx-chip" data-adr="' + esc(a) + '">📍 ' +
-        esc(a) + '</button>';
+      var lbl = a.label ? ('🏠 ' + esc(a.label)) : ('📍 ' + esc(a.adresse));
+      return '<button type="button" class="tx-chip" title="' + esc(a.adresse) +
+        '" data-adr="' + esc(a.adresse) + '">' + lbl + '</button>';
     }).join('');
   });
 }

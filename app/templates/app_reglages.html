@@ -9,36 +9,25 @@
 <section class="acct-section">
   <h3>Réglages taxi/VTC</h3>
 
-  <div class="fl-card" style="display:flex;flex-direction:column;gap:2px;padding:6px">
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.clients') }}">
-      <span>👥 Clients habitués</span><span>→</span></a>
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.lieux') }}">
-      <span>📍 Lieux fréquents</span><span>→</span></a>
+  {# Même présentation que le menu « Plus » (grosses icônes, cartes cliquables). #}
+  <div class="plus-list">
+    <a class="plus-row" href="{{ url_for('config.clients') }}">
+      <span class="plus-ic">👥</span><span>Clients habitués</span><span class="plus-arrow">›</span></a>
+    <a class="plus-row" href="{{ url_for('config.lieux') }}">
+      <span class="plus-ic">📍</span><span>Lieux fréquents</span><span class="plus-arrow">›</span></a>
+    <a class="plus-row" href="{{ url_for('config.tarifs') }}">
+      <span class="plus-ic">💶</span><span>Grilles tarifaires</span><span class="plus-arrow">›</span></a>
     {% if is_super_admin %}
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.noms') }}">
-      <span>🪪 Noms d'affichage des conducteurs</span><span>→</span></a>
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.tarifs') }}">
-      <span>💶 Grilles tarifaires</span><span>→</span></a>
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.ia') }}">
-      <span>🤖 Extraction IA (message client)</span><span>→</span></a>
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.calendrier') }}">
-      <span>📆 Modèle d'export calendrier</span><span>→</span></a>
-    <a class="btn ghost" style="justify-content:space-between;display:flex"
-       href="{{ url_for('config.notifications') }}">
-      <span>🔔 Notifications (message + test)</span><span>→</span></a>
+    <a class="plus-row" href="{{ url_for('config.noms') }}">
+      <span class="plus-ic">🪪</span><span>Noms d'affichage des conducteurs</span><span class="plus-arrow">›</span></a>
+    <a class="plus-row" href="{{ url_for('config.ia') }}">
+      <span class="plus-ic">🤖</span><span>Extraction IA (message client)</span><span class="plus-arrow">›</span></a>
+    <a class="plus-row" href="{{ url_for('config.calendrier') }}">
+      <span class="plus-ic">📆</span><span>Modèle d'export calendrier</span><span class="plus-arrow">›</span></a>
+    <a class="plus-row" href="{{ url_for('config.notifications') }}">
+      <span class="plus-ic">🔔</span><span>Notifications (message + test)</span><span class="plus-arrow">›</span></a>
     {% endif %}
   </div>
-  <p class="access-note" style="text-align:left;margin:8px 0 0">
-    Les grilles tarifaires, l'IA, le modèle de calendrier et les notifications
-    sont réservés au super-admin ; les clients et lieux sont partagés par tous
-    les conducteurs.
-  </p>
 </section>
 
 {% if is_super_admin %}
