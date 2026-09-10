@@ -11,32 +11,21 @@
   </p>
 
   <div class="plus-list">
+    {# Écrans (pas des réglages) #}
     <a class="plus-row" href="{{ url_for('main.mes_stats') }}">
       <span class="plus-ic">📊</span><span>Mes statistiques</span><span class="plus-arrow">›</span>
     </a>
-    <a class="plus-row" href="{{ url_for('config.lieux') }}">
-      <span class="plus-ic">📍</span><span>Lieux fréquents</span><span class="plus-arrow">›</span>
-    </a>
-    {% if is_super_admin %}
-    <a class="plus-row" href="{{ url_for('config.tarifs') }}">
-      <span class="plus-ic">💶</span><span>Grilles tarifaires</span><span class="plus-arrow">›</span>
-    </a>
-    <a class="plus-row" href="{{ url_for('config.ia') }}">
-      <span class="plus-ic">🤖</span><span>Extraction IA</span><span class="plus-arrow">›</span>
-    </a>
-    <a class="plus-row" href="{{ url_for('config.calendrier') }}">
-      <span class="plus-ic">📆</span><span>Modèle calendrier</span><span class="plus-arrow">›</span>
-    </a>
-    <a class="plus-row" href="{{ url_for('config.notifications') }}">
-      <span class="plus-ic">🔔</span><span>Notifications</span><span class="plus-arrow">›</span>
-    </a>
-    <a class="plus-row" href="{{ url_for('accounts.parametres') }}">
-      <span class="plus-ic">⚙️</span><span>Paramètres &amp; comptes</span><span class="plus-arrow">›</span>
-    </a>
-    {% endif %}
+
+    {# Toute la configuration métier est REGROUPÉE dans « Réglages » (plus de doublon). #}
     <a class="plus-row" href="{{ url_for('accounts.reglages') }}">
       <span class="plus-ic">🧩</span><span>Réglages de l'application</span><span class="plus-arrow">›</span>
     </a>
+    {% if is_super_admin %}
+    <a class="plus-row" href="{{ url_for('accounts.parametres') }}">
+      <span class="plus-ic">⚙️</span><span>Paramètres &amp; comptes (site)</span><span class="plus-arrow">›</span>
+    </a>
+    {% endif %}
+
     <a class="plus-row plus-out" href="{{ url_for('auth.logout') }}">
       <span class="plus-ic">↩︎</span><span>Déconnexion</span><span class="plus-arrow">›</span>
     </a>
