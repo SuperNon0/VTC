@@ -239,6 +239,31 @@ mise à jour sans sudo (SIGHUP gunicorn). Pour exposer publiquement, mets un
 
 ---
 
+## Fonctions métier VTC
+
+Le métier taxi/VTC vit dans `app/` (voir `CLAUDE.md` §6). Quelques fonctions clés :
+
+### Clients habitués & adresses multiples
+- Un client peut avoir **plusieurs adresses habituelles**. Dans **Réglages →
+  Clients habitués**, chaque fiche a un champ + bouton **« Ajouter »** : on saisit
+  une adresse, on l'ajoute à la liste, et on peut **supprimer** chaque adresse
+  individuellement (✕). Stockées en JSON dans `clients.adresses`.
+- À la **création d'une course**, quand on choisit un client habitué (auto-
+  complétion), ses adresses habituelles s'affichent en **puces cliquables** sous
+  « départ » et « arrivée » : les courses répétitives se saisissent en un clic.
+- Si une adresse habituelle correspond à un **lieu fréquent** enregistré, le clic
+  relie le lieu → **auto-sélection de la grille tarifaire** (départ → arrivée).
+
+### Autres fonctions
+- **Lieux fréquents** collaboratifs (autocomplétion « tape gare… »), **grilles
+  tarifaires** lieu→lieu avec auto-sélection, **extraction IA** d'un message
+  client, **estimation** de trajet (OSM, best-effort), **Web Push** (PWA),
+  **export calendrier** (ICS / Google), **noms d'affichage** des conducteurs.
+- Diagnostics serveur : `deploy/check_timezone.sh` (fuseau horaire) et
+  `deploy/check_estimation.sh` (connectivité géocodage/itinéraire).
+
+---
+
 ## Documentation
 
 - [`CLAUDE.md`](CLAUDE.md) — **contrat de reproduction** (à lire en premier).

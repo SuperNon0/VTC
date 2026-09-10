@@ -56,6 +56,8 @@
                oninput="chercherLieu('depart', this.value)">
         <div class="tx-ac-list" id="ac-depart"></div>
       </div>
+      {# Adresses habituelles du client sélectionné (un clic = remplit le champ). #}
+      <div class="tx-chips" id="cli-adr-depart" style="margin-top:.4rem"></div>
     </div>
 
     {# ── Dépose ────────────────────────────────────────────────────────────── #}
@@ -67,6 +69,7 @@
                oninput="chercherLieu('arrivee', this.value)">
         <div class="tx-ac-list" id="ac-arrivee"></div>
       </div>
+      <div class="tx-chips" id="cli-adr-arrivee" style="margin-top:.4rem"></div>
     </div>
 
     {# ── Date & heure de prise en charge (deux champs séparés) ─────────────── #}
@@ -299,9 +302,41 @@ function choisirClient(c) {
   document.getElementById('client_nom').value = c.nom || '';
   document.getElementById('client_tel').value = c.telephone || '';
   document.getElementById('client_id').value = c.id || '';
-  if (c.adresses && c.adresses.length) document.getElementById('depart').value = c.adresses[0];
+  window.CLIENT_ADR = c.adresses || [];
+  renderClientAdr();
+  // Pré-remplit le départ avec la 1re adresse habituelle (modifiable au clic).
+  if (window.CLIENT_ADR.length) pickAdr('depart', window.CLIENT_ADR[0]);
   closeList(document.getElementById('ac-list'));
 }
+
+// ── Adresses habituelles du client : puces cliquables (§6.4) ─────────────────
+// Affiche les adresses enregistrées du client sous « départ » ET « arrivée » :
+// les courses répétitives se saisissent en un clic.
+function renderClientAdr() {
+  var adrs = window.CLIENT_ADR || [];
+  ['depart', 'arrivee'].forEach(function (field) {
+    var box = document.getElementById('cli-adr-' + field);
+    if (!box) return;
+    box.innerHTML = adrs.map(function (a) {
+      return '<button type="button" class="tx-chip" data-adr="' + esc(a) + '">📍 ' +
+        esc(a) + '</button>';
+    }).join('');
+  });
+}
+// Un clic sur une adresse habituelle : remplit le champ et, si cette adresse
+// correspond à un lieu fréquent enregistré, relie le lieu → auto-sélection du tarif.
+function pickAdr(field, adresse) {
+  document.getElementById(field).value = adresse;
+  matchLieuTexte(field, adresse);
+  autoMatchTarif();
+}
+['depart', 'arrivee'].forEach(function (field) {
+  var box = document.getElementById('cli-adr-' + field);
+  if (box) box.addEventListener('click', function (e) {
+    var b = e.target.closest('.tx-chip');
+    if (b) pickAdr(field, b.dataset.adr);
+  });
+});
 
 // Ferme les listes ouvertes au clic extérieur.
 document.addEventListener('click', function (e) {

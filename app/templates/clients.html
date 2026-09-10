@@ -7,6 +7,8 @@
   <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.4rem">Clients habitués</h2>
   <p class="access-note" style="text-align:left;margin:0 0 1rem">
     Retrouvés automatiquement lors de la création d'une course (autocomplétion).
+    Chaque client peut avoir <b>plusieurs adresses habituelles</b> — elles seront
+    proposées en un clic au moment de créer sa course.
   </p>
 
   <details class="fl-card" style="margin-bottom:16px">
@@ -21,9 +23,15 @@
         <label class="fl-label" for="telephone">Téléphone</label>
         <input class="tx-input" type="tel" name="telephone" id="telephone">
       </div>
-      <div>
-        <label class="fl-label" for="adresses">Adresses fréquentes (une par ligne)</label>
-        <textarea class="tx-input tx-area" name="adresses" id="adresses" rows="2"></textarea>
+      {# Widget « adresses habituelles » : champ + Ajouter + liste supprimable. #}
+      <div class="adr-widget">
+        <label class="fl-label">Adresses fréquentes</label>
+        <div style="display:flex;gap:.4rem">
+          <input type="text" class="tx-input adr-input" placeholder="Écris une adresse puis « Ajouter »">
+          <button type="button" class="btn ghost small adr-add">Ajouter</button>
+        </div>
+        <div class="adr-list" style="display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem"></div>
+        <textarea name="adresses" hidden></textarea>
       </div>
       <div>
         <label class="fl-label" for="notes">Notes</label>
@@ -43,6 +51,7 @@
   <details class="fl-card" style="margin-bottom:8px">
     <summary style="cursor:pointer">
       <b>{{ c.nom }}</b>{% if c.telephone %} <span class="tx-muted">· {{ c.telephone }}</span>{% endif %}
+      {% if c.adresses_list %}<span class="tx-muted"> · {{ c.adresses_list|length }} adresse{{ 's' if c.adresses_list|length > 1 else '' }}</span>{% endif %}
     </summary>
     <form method="post" action="{{ url_for('config.client_modifier', client_id=c.id) }}"
           style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
@@ -54,9 +63,14 @@
         <label class="fl-label">Téléphone</label>
         <input class="tx-input" type="tel" name="telephone" value="{{ c.telephone or '' }}">
       </div>
-      <div>
-        <label class="fl-label">Adresses fréquentes (une par ligne)</label>
-        <textarea class="tx-input tx-area" name="adresses" rows="2">{{ c.adresses_list|join('\n') }}</textarea>
+      <div class="adr-widget">
+        <label class="fl-label">Adresses fréquentes</label>
+        <div style="display:flex;gap:.4rem">
+          <input type="text" class="tx-input adr-input" placeholder="Écris une adresse puis « Ajouter »">
+          <button type="button" class="btn ghost small adr-add">Ajouter</button>
+        </div>
+        <div class="adr-list" style="display:flex;flex-direction:column;gap:.35rem;margin-top:.5rem"></div>
+        <textarea name="adresses" hidden>{{ c.adresses_list|join('\n') }}</textarea>
       </div>
       <div>
         <label class="fl-label">Notes</label>
@@ -68,9 +82,67 @@
     </form>
     <form method="post" action="{{ url_for('config.client_supprimer', client_id=c.id) }}"
           onsubmit="return confirm('Supprimer ce client ?')" style="margin-top:6px;text-align:right">
-      <button type="submit" class="btn danger small">Supprimer</button>
+      <button type="submit" class="btn danger small">Supprimer le client</button>
     </form>
   </details>
   {% endfor %}
 </main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Widget « adresses habituelles » : ajouter / lister / supprimer ───────────
+// La liste vit dans un <textarea hidden name="adresses"> (une adresse par ligne)
+// que le back-end lit déjà tel quel — aucun changement côté serveur.
+function _escA(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function adrItems(w) {
+  return (w.querySelector('textarea').value || '')
+    .split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+function adrRender(w) {
+  var list = w.querySelector('.adr-list');
+  var items = adrItems(w);
+  if (!items.length) {
+    list.innerHTML = '<span class="tx-muted" style="font-size:.85rem">Aucune adresse — ajoutes-en une ci-dessus.</span>';
+    return;
+  }
+  list.innerHTML = items.map(function (a, i) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;' +
+      'background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem .6rem">' +
+      '<span>📍 ' + _escA(a) + '</span>' +
+      '<button type="button" class="btn danger small adr-del" data-i="' + i + '" aria-label="Supprimer">✕</button>' +
+      '</div>';
+  }).join('');
+}
+function adrSet(w, items) { w.querySelector('textarea').value = items.join('\n'); adrRender(w); }
+
+document.addEventListener('click', function (e) {
+  var add = e.target.closest('.adr-add');
+  if (add) {
+    var w = add.closest('.adr-widget'), inp = w.querySelector('.adr-input');
+    var v = (inp.value || '').trim(); if (!v) return;
+    var items = adrItems(w);
+    if (items.indexOf(v) === -1) items.push(v);
+    adrSet(w, items); inp.value = ''; inp.focus(); return;
+  }
+  var del = e.target.closest('.adr-del');
+  if (del) {
+    var w2 = del.closest('.adr-widget'), items2 = adrItems(w2);
+    items2.splice(+del.dataset.i, 1); adrSet(w2, items2);
+  }
+});
+// « Entrée » dans le champ adresse = Ajouter (ne soumet pas le formulaire).
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('adr-input')) {
+    e.preventDefault();
+    e.target.closest('.adr-widget').querySelector('.adr-add').click();
+  }
+});
+// Rendu initial de chaque widget (adresses déjà enregistrées).
+Array.prototype.forEach.call(document.querySelectorAll('.adr-widget'), adrRender);
+</script>
 {% endblock %}
