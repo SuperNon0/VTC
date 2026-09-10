@@ -23,3 +23,10 @@ def register(flask_app) -> None:
     # IA, tarifs, lieux, calendrier, notifications, estimation). Même thème,
     # même cadre — voir base/panel/routes/accounts_routes.py::reglages.
     flask_app.config["APP_REGLAGES_TEMPLATE"] = "app_reglages.html"
+
+    # La couche « base » suit la branche `main` du site-base : « Mettre à jour la
+    # base » (sync_base) récupère les correctifs sans qu'un tag soit publié.
+    # sync_base lit ce réglage via current_app.config (point d'extension prévu par
+    # la base). Un BASE_REPO_REF déjà présent dans le .env reste prioritaire.
+    if not flask_app.config.get("BASE_REPO_REF"):
+        flask_app.config["BASE_REPO_REF"] = "main"
