@@ -229,7 +229,9 @@ function showLieux(field, q) {
   list.innerHTML = items.map(function (it) {
     if (it.client) {
       var t = it.label ? ('🏠 ' + esc(it.label)) : '📍';
-      return '<div class="tx-ac-item" data-client="1" data-adr="' + esc(it.adresse) + '">' +
+      if (it.ville) t += ' · ' + esc(it.ville);
+      return '<div class="tx-ac-item" data-client="1" data-adr="' + esc(it.adresse) +
+        '" data-ville="' + esc(it.ville || '') + '">' +
         '<b>' + t + '</b> <span class="tx-muted">' + esc(it.adresse) + '</span></div>';
     }
     return '<div class="tx-ac-item" data-id="' + it.id + '">' +
@@ -254,7 +256,7 @@ function choisirLieu(field, id) {
     var it = e.target.closest('.tx-ac-item');
     if (!it) return;
     if (it.dataset.client) {          // adresse nommée du client → remplit le champ
-      pickAdr(field, it.dataset.adr);
+      pickAdr(field, it.dataset.adr, it.dataset.ville);
       closeList(this);
     } else {                          // lieu fréquent global → relie le lieu (auto-tarif)
       choisirLieu(field, +it.dataset.id);
@@ -369,7 +371,7 @@ function choisirClient(c) {
   window.CLIENT_ADR = c.adresses || [];
   renderClientAdr();
   // Pré-remplit le départ avec la 1re adresse habituelle (modifiable au clic).
-  if (window.CLIENT_ADR.length) pickAdr('depart', window.CLIENT_ADR[0].adresse);
+  if (window.CLIENT_ADR.length) pickAdr('depart', window.CLIENT_ADR[0].adresse, window.CLIENT_ADR[0].ville);
   closeList(document.getElementById('ac-list'));
 }
 
@@ -383,23 +385,33 @@ function renderClientAdr() {
     if (!box) return;
     box.innerHTML = adrs.map(function (a) {
       var lbl = a.label ? ('🏠 ' + esc(a.label)) : ('📍 ' + esc(a.adresse));
+      if (a.ville) lbl += ' · ' + esc(a.ville);
       return '<button type="button" class="tx-chip" title="' + esc(a.adresse) +
-        '" data-adr="' + esc(a.adresse) + '">' + lbl + '</button>';
+        '" data-adr="' + esc(a.adresse) + '" data-ville="' + esc(a.ville || '') + '">' +
+        lbl + '</button>';
     }).join('');
   });
 }
 // Un clic sur une adresse habituelle : remplit le champ et, si cette adresse
 // correspond à un lieu fréquent enregistré, relie le lieu → auto-sélection du tarif.
-function pickAdr(field, adresse) {
+function pickAdr(field, adresse, ville) {
   document.getElementById(field).value = adresse;
+  if (ville) setVilleByName(field, ville);   // cale la ville du champ sur celle de l'adresse
   matchLieuTexte(field, adresse);
   autoMatchTarif();
+}
+// Sélectionne dans le menu « ville » du champ la ville portant ce nom (si connue).
+function setVilleByName(field, nom) {
+  var vs = document.getElementById('ville-' + field);
+  if (!vs || !nom) return;
+  var v = (window.VILLES || []).find(function (x) { return x.nom === nom; });
+  if (v) vs.value = String(v.id);
 }
 ['depart', 'arrivee'].forEach(function (field) {
   var box = document.getElementById('cli-adr-' + field);
   if (box) box.addEventListener('click', function (e) {
     var b = e.target.closest('.tx-chip');
-    if (b) pickAdr(field, b.dataset.adr);
+    if (b) pickAdr(field, b.dataset.adr, b.dataset.ville);
   });
 });
 

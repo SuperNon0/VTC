@@ -819,8 +819,10 @@ def clients():
         d = dict(r)
         d["adresses_list"] = C.client_adresses(r)
         rows.append(d)
+    villes = C.liste_villes()
     return render_template(
-        "clients.html", clients=rows, is_super_admin=is_super_admin())
+        "clients.html", clients=rows, is_super_admin=is_super_admin(),
+        villes=villes, villes_noms=[v["nom"] for v in villes])
 
 
 @config_bp.route("/clients/ajouter", methods=["POST"])

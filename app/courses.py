@@ -233,11 +233,13 @@ def _normaliser_adresses(raw) -> list:
         if isinstance(it, dict):
             adresse = (it.get("adresse") or "").strip()
             label = (it.get("label") or "").strip()
+            ville = (it.get("ville") or "").strip()
         else:
             adresse = str(it or "").strip()
             label = ""
+            ville = ""
         if adresse:
-            out.append({"label": label, "adresse": adresse})
+            out.append({"label": label, "ville": ville, "adresse": adresse})
     return out
 
 

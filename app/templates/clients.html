@@ -26,7 +26,7 @@
       </div>
       {# Widget « adresses habituelles » nommées : libellé (Maison, Travail…) + adresse. #}
       <div class="adr-widget">
-        <label class="fl-label">Adresses fréquentes (avec un nom)</label>
+        <label class="fl-label">Adresses fréquentes (nom + ville + adresse)</label>
         <div class="adr-rows"></div>
         <button type="button" class="btn ghost small adr-add-row">+ Ajouter une adresse</button>
         <input type="hidden" name="adresses_json" class="adr-json" value="[]">
@@ -62,13 +62,19 @@
         <input class="tx-input" type="tel" name="telephone" value="{{ c.telephone or '' }}">
       </div>
       <div class="adr-widget">
-        <label class="fl-label">Adresses fréquentes (avec un nom)</label>
+        <label class="fl-label">Adresses fréquentes (nom + ville + adresse)</label>
         <div class="adr-rows">
           {% for a in c.adresses_list %}
-          <div class="adr-row" style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem">
-            <input class="tx-input adr-label" placeholder="Maison…" value="{{ a.label }}" style="flex:1;min-width:0">
-            <input class="tx-input adr-val" placeholder="Adresse complète" value="{{ a.adresse }}" style="flex:2;min-width:0">
-            <button type="button" class="btn danger small adr-del" aria-label="Supprimer">✕</button>
+          <div class="adr-row" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:.5rem;margin-bottom:.5rem;display:flex;flex-direction:column;gap:.35rem">
+            <div style="display:flex;gap:.4rem">
+              <input class="tx-input adr-label" placeholder="Nom (Maison…)" value="{{ a.label }}" style="flex:1;min-width:0">
+              <select class="tx-input adr-ville" style="flex:1;min-width:0">
+                <option value="">— Ville —</option>
+                {% for vn in villes_noms %}<option value="{{ vn }}" {{ 'selected' if vn == a.ville else '' }}>{{ vn }}</option>{% endfor %}
+              </select>
+              <button type="button" class="btn danger small adr-del" aria-label="Supprimer">✕</button>
+            </div>
+            <input class="tx-input adr-val" placeholder="Adresse complète" value="{{ a.adresse }}">
           </div>
           {% endfor %}
         </div>
@@ -93,18 +99,29 @@
 {% endblock %}
 
 {% block scripts %}
+<script>window.VILLES_NOMS = {{ villes_noms|tojson }};</script>
 <script>
-// ── Widget « adresses nommées » : libellé (Maison…) + adresse, ajout/suppression ─
+// ── Widget « adresses nommées » : nom (Maison…) + ville + adresse ─────────────
 // L'état est sérialisé en JSON dans <input hidden name="adresses_json"> :
-//   [{ "label": "Maison", "adresse": "12 rue …" }, …]
+//   [{ "label": "Maison", "ville": "Nîmes", "adresse": "12 rue …" }, …]
 // Le back-end lit ce champ (repli sur l'ancien format si absent).
-function adrRowHTML(label, adresse) {
-  function e(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-  return '<div class="adr-row" style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem">' +
-    '<input class="tx-input adr-label" placeholder="Maison…" value="' + e(label) + '" style="flex:1;min-width:0">' +
-    '<input class="tx-input adr-val" placeholder="Adresse complète" value="' + e(adresse) + '" style="flex:2;min-width:0">' +
-    '<button type="button" class="btn danger small adr-del" aria-label="Supprimer">✕</button>' +
+function _e(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function adrVilleOptions(sel) {
+  var opts = '<option value="">— Ville —</option>';
+  (window.VILLES_NOMS || []).forEach(function (vn) {
+    opts += '<option value="' + _e(vn) + '"' + (vn === sel ? ' selected' : '') + '>' + _e(vn) + '</option>';
+  });
+  return opts;
+}
+function adrRowHTML(label, ville, adresse) {
+  return '<div class="adr-row" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:.5rem;margin-bottom:.5rem;display:flex;flex-direction:column;gap:.35rem">' +
+    '<div style="display:flex;gap:.4rem">' +
+      '<input class="tx-input adr-label" placeholder="Nom (Maison…)" value="' + _e(label) + '" style="flex:1;min-width:0">' +
+      '<select class="tx-input adr-ville" style="flex:1;min-width:0">' + adrVilleOptions(ville) + '</select>' +
+      '<button type="button" class="btn danger small adr-del" aria-label="Supprimer">✕</button>' +
+    '</div>' +
+    '<input class="tx-input adr-val" placeholder="Adresse complète" value="' + _e(adresse) + '">' +
     '</div>';
 }
 // Recalcule le JSON caché à partir des lignes visibles du widget.
@@ -113,7 +130,9 @@ function adrSync(w) {
   Array.prototype.forEach.call(rows, function (r) {
     var adresse = (r.querySelector('.adr-val').value || '').trim();
     var label = (r.querySelector('.adr-label').value || '').trim();
-    if (adresse) out.push({ label: label, adresse: adresse });
+    var vsel = r.querySelector('.adr-ville');
+    var ville = vsel ? (vsel.value || '').trim() : '';
+    if (adresse) out.push({ label: label, ville: ville, adresse: adresse });
   });
   w.querySelector('.adr-json').value = JSON.stringify(out);
 }
@@ -121,7 +140,7 @@ document.addEventListener('click', function (e) {
   var add = e.target.closest('.adr-add-row');
   if (add) {
     var w = add.closest('.adr-widget');
-    w.querySelector('.adr-rows').insertAdjacentHTML('beforeend', adrRowHTML('', ''));
+    w.querySelector('.adr-rows').insertAdjacentHTML('beforeend', adrRowHTML('', '', ''));
     var rows = w.querySelectorAll('.adr-row');
     rows[rows.length - 1].querySelector('.adr-label').focus();
     adrSync(w); return;
@@ -133,13 +152,16 @@ document.addEventListener('click', function (e) {
     adrSync(w2);
   }
 });
-// Toute frappe dans un libellé/adresse met à jour le JSON caché.
-document.addEventListener('input', function (e) {
+// Toute frappe (libellé/adresse) ou changement de ville met à jour le JSON caché.
+function _adrMaybeSync(e) {
   if (e.target.classList && (e.target.classList.contains('adr-val') ||
-      e.target.classList.contains('adr-label'))) {
+      e.target.classList.contains('adr-label') ||
+      e.target.classList.contains('adr-ville'))) {
     var w = e.target.closest('.adr-widget'); if (w) adrSync(w);
   }
-});
+}
+document.addEventListener('input', _adrMaybeSync);
+document.addEventListener('change', _adrMaybeSync);
 // « Entrée » dans une ligne = ajoute une ligne (ne soumet pas le formulaire).
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && e.target.classList &&
@@ -152,7 +174,7 @@ document.addEventListener('keydown', function (e) {
 // prête à remplir si le client n'a encore aucune adresse.
 Array.prototype.forEach.call(document.querySelectorAll('.adr-widget'), function (w) {
   if (!w.querySelector('.adr-row')) {
-    w.querySelector('.adr-rows').insertAdjacentHTML('beforeend', adrRowHTML('', ''));
+    w.querySelector('.adr-rows').insertAdjacentHTML('beforeend', adrRowHTML('', '', ''));
   }
   adrSync(w);
 });

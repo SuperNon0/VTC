@@ -143,7 +143,9 @@
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:.4rem">
         {% for a in cl.adresses_list %}
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.45rem .6rem">
-          {% if a.label %}<b>🏠 {{ a.label }}</b><br>{% endif %}
+          {% if a.label or a.ville %}
+          <b>{% if a.label %}🏠 {{ a.label }}{% endif %}{% if a.ville %}{% if a.label %} · {% endif %}🏙️ {{ a.ville }}{% endif %}</b><br>
+          {% endif %}
           <span class="access-note" style="text-align:left">📍 {{ a.adresse }}</span>
         </div>
         {% endfor %}
