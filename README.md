@@ -254,6 +254,16 @@ Le métier taxi/VTC vit dans `app/` (voir `CLAUDE.md` §6). Quelques fonctions c
 - Si une adresse habituelle correspond à un **lieu fréquent** enregistré, le clic
   relie le lieu → **auto-sélection de la grille tarifaire** (départ → arrivée).
 
+### Villes & lieux fréquents
+- **Villes desservies** : liste gérable (Réglages → Lieux fréquents). Chaque
+  **lieu** est rattaché à une ville (menu déroulant). Les lieux sont **regroupés
+  par ville** dans la liste.
+- À la **création d'une course**, on choisit **d'abord la ville**, puis
+  l'**adresse** se filtre sur les lieux de cette ville (départ et arrivée). Les
+  villes enregistrées sont proposées en suggestion.
+- Colonne `lieux.ville_id` ajoutée automatiquement aux bases existantes par
+  `app.courses.ensure_schema()` (appelée au démarrage).
+
 ### Autres fonctions
 - **Lieux fréquents** collaboratifs (autocomplétion « tape gare… »), **grilles
   tarifaires** lieu→lieu avec auto-sélection, **extraction IA** d'un message

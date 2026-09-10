@@ -21,12 +21,24 @@ CREATE TABLE IF NOT EXISTS clients (
     cree      INTEGER
 );
 
+-- Villes desservies (liste gérable). Rattachées aux lieux (ville_id) et
+-- proposées en suggestion dans les formulaires (course + lieu).
+CREATE TABLE IF NOT EXISTS villes (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom   TEXT NOT NULL,
+    ordre INTEGER NOT NULL DEFAULT 0
+);
+
 -- Lieux fréquents présélectionnables dans le formulaire (cahier §6.2).
+-- `ville_id` rattache le lieu à une ville (colonne ajoutée après coup sur les
+-- bases existantes par app.courses.ensure_schema()).
 CREATE TABLE IF NOT EXISTS lieux (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    nom     TEXT NOT NULL,
-    adresse TEXT,
-    ordre   INTEGER NOT NULL DEFAULT 0
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom      TEXT NOT NULL,
+    adresse  TEXT,
+    ville_id INTEGER,
+    ordre    INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (ville_id) REFERENCES villes(id) ON DELETE SET NULL
 );
 
 -- Grilles tarifaires (cahier §6.3) : un tarif relie un lieu de départ à un lieu

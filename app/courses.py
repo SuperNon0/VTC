@@ -289,21 +289,61 @@ def supprimer_tarif(tarif_id: int) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Lieux fréquents (cahier §6.2)
+# Migration idempotente : colonnes ajoutées après coup sur une base existante.
+# Appelée au démarrage par app/__init__.py::register (le schéma.sql ne sait pas
+# faire « ALTER … ADD COLUMN IF NOT EXISTS »).
 # ─────────────────────────────────────────────────────────────────────────────
-def liste_lieux() -> list:
+def ensure_schema() -> None:
+    db = get_db()
+    cols = {r[1] for r in db.execute("PRAGMA table_info(lieux)").fetchall()}
+    if cols and "ville_id" not in cols:   # table présente mais colonne manquante
+        db.execute("ALTER TABLE lieux ADD COLUMN ville_id INTEGER")
+        db.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Villes desservies (liste gérable, rattachées aux lieux)
+# ─────────────────────────────────────────────────────────────────────────────
+def liste_villes() -> list:
     return get_db().execute(
-        "SELECT * FROM lieux ORDER BY ordre, nom"
+        "SELECT * FROM villes ORDER BY ordre, nom"
     ).fetchall()
 
 
-def creer_lieu(nom: str, adresse: str | None) -> int:
+def creer_ville(nom: str) -> int:
+    db = get_db()
+    ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM villes")
+             .fetchone()[0])
+    cur = db.execute("INSERT INTO villes (nom, ordre) VALUES (?, ?)", (nom, ordre))
+    db.commit()
+    return cur.lastrowid
+
+
+def supprimer_ville(ville_id: int) -> None:
+    db = get_db()
+    db.execute("DELETE FROM villes WHERE id = ?", (ville_id,))
+    db.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lieux fréquents (cahier §6.2) — rattachés à une ville
+# ─────────────────────────────────────────────────────────────────────────────
+def liste_lieux() -> list:
+    """Lieux avec le nom de leur ville résolu (pour l'affichage et le filtrage)."""
+    return get_db().execute(
+        "SELECT l.*, v.nom AS ville_nom FROM lieux l "
+        "LEFT JOIN villes v ON v.id = l.ville_id "
+        "ORDER BY COALESCE(v.ordre, 999999), v.nom, l.ordre, l.nom"
+    ).fetchall()
+
+
+def creer_lieu(nom: str, adresse: str | None, ville_id: int | None = None) -> int:
     db = get_db()
     ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM lieux")
              .fetchone()[0])
     cur = db.execute(
-        "INSERT INTO lieux (nom, adresse, ordre) VALUES (?, ?, ?)",
-        (nom, adresse, ordre),
+        "INSERT INTO lieux (nom, adresse, ville_id, ordre) VALUES (?, ?, ?, ?)",
+        (nom, adresse, ville_id, ordre),
     )
     db.commit()
     return cur.lastrowid

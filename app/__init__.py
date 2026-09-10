@@ -30,3 +30,9 @@ def register(flask_app) -> None:
     # la base). Un BASE_REPO_REF déjà présent dans le .env reste prioritaire.
     if not flask_app.config.get("BASE_REPO_REF"):
         flask_app.config["BASE_REPO_REF"] = "main"
+
+    # Migration idempotente des colonnes métier ajoutées après coup (ex. lieux.ville_id)
+    # sur une base déjà créée. register() est appelé hors contexte → on en ouvre un.
+    from . import courses as _courses
+    with flask_app.app_context():
+        _courses.ensure_schema()

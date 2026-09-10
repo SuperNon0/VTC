@@ -47,13 +47,20 @@
              placeholder="06 …">
     </div>
 
-    {# ── Prise en charge : tape un lieu configuré → l'adresse se remplit (§6.2) ─ #}
+    {# ── Prise en charge : d'abord la VILLE, puis l'adresse (filtrée) — §6.2 ─── #}
     <div class="tx-field">
+      <label class="fl-label" for="ville-depart">Prise en charge — ville</label>
+      <select class="tx-input" id="ville-depart" onchange="onVille('depart')"
+              style="margin-bottom:.5rem">
+        <option value="">— Ville (ou adresse libre) —</option>
+        {% for v in villes %}<option value="{{ v.id }}">{{ v.nom }}</option>{% endfor %}
+      </select>
       <label class="fl-label" for="depart">Adresse de prise en charge</label>
       <div class="tx-ac">
         <input class="tx-input" type="text" name="depart" id="depart" autocomplete="off"
-               placeholder="Tape « gare… » ou une adresse libre"
-               oninput="chercherLieu('depart', this.value)">
+               placeholder="Choisis un lieu de la ville, ou tape une adresse"
+               oninput="chercherLieu('depart', this.value)"
+               onfocus="showLieux('depart', this.value)">
         <div class="tx-ac-list" id="ac-depart"></div>
       </div>
       {# Adresses habituelles du client sélectionné (un clic = remplit le champ). #}
@@ -62,11 +69,18 @@
 
     {# ── Dépose ────────────────────────────────────────────────────────────── #}
     <div class="tx-field">
+      <label class="fl-label" for="ville-arrivee">Dépose — ville</label>
+      <select class="tx-input" id="ville-arrivee" onchange="onVille('arrivee')"
+              style="margin-bottom:.5rem">
+        <option value="">— Ville (ou adresse libre) —</option>
+        {% for v in villes %}<option value="{{ v.id }}">{{ v.nom }}</option>{% endfor %}
+      </select>
       <label class="fl-label" for="arrivee">Adresse de dépose</label>
       <div class="tx-ac">
         <input class="tx-input" type="text" name="arrivee" id="arrivee" autocomplete="off"
-               placeholder="Tape « aéroport… » ou une adresse libre"
-               oninput="chercherLieu('arrivee', this.value)">
+               placeholder="Choisis un lieu de la ville, ou tape une adresse"
+               oninput="chercherLieu('arrivee', this.value)"
+               onfocus="showLieux('arrivee', this.value)">
         <div class="tx-ac-list" id="ac-arrivee"></div>
       </div>
       <div class="tx-chips" id="cli-adr-arrivee" style="margin-top:.4rem"></div>
@@ -139,6 +153,7 @@
 <script>
   window.LIEUX = {{ lieux_json|tojson }};
   window.TARIFS = {{ tarifs_json|tojson }};
+  window.VILLES = {{ villes_json|tojson }};
 </script>
 <script>
 function toast(m, err) {
@@ -169,16 +184,32 @@ function setJour(offset) {
     d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
 }
 
-// ── Lieux configurés : autocomplétion des adresses (§6.2) ────────────────────
-function chercherLieu(field, q) {
+// ── Ville d'un champ (départ / arrivée) ──────────────────────────────────────
+function villeSel(field) {
+  var s = document.getElementById('ville-' + field);
+  return s ? (parseInt(s.value, 10) || null) : null;
+}
+// Choix d'une ville → propose directement les lieux de cette ville.
+function onVille(field) {
+  document.getElementById(field + '_lieu_id').value = '';
+  showLieux(field, document.getElementById(field).value);
+}
+
+// ── Lieux : autocomplétion filtrée par la ville choisie (§6.2) ───────────────
+function chercherLieu(field, q) { showLieux(field, q); }
+function showLieux(field, q) {
   document.getElementById(field + '_lieu_id').value = '';   // saisie libre = pas de lieu
   var list = document.getElementById('ac-' + field);
+  var vid = villeSel(field);
   q = (q || '').trim().toLowerCase();
-  if (!q) { closeList(list); autoMatchTarif(); return; }
+  // Ni ville ni texte → on n'affiche rien (évite de tout déballer).
+  if (!vid && !q) { closeList(list); autoMatchTarif(); return; }
   var res = (window.LIEUX || []).filter(function (l) {
+    if (vid && l.ville_id !== vid) return false;            // filtre par ville
+    if (!q) return true;                                    // ville seule → tous ses lieux
     return l.nom.toLowerCase().indexOf(q) !== -1 ||
            (l.adresse && l.adresse.toLowerCase().indexOf(q) !== -1);
-  }).slice(0, 6);
+  }).slice(0, 8);
   if (!res.length) { closeList(list); autoMatchTarif(); return; }
   list.innerHTML = res.map(function (l) {
     return '<div class="tx-ac-item" data-id="' + l.id + '" data-field="' + field + '">' +
@@ -192,6 +223,9 @@ function choisirLieu(field, id) {
   if (!l) return;
   document.getElementById(field).value = l.adresse || l.nom;
   document.getElementById(field + '_lieu_id').value = l.id;
+  // Cale aussi la ville du champ sur celle du lieu choisi.
+  var vs = document.getElementById('ville-' + field);
+  if (vs && l.ville_id) vs.value = String(l.ville_id);
   closeList(document.getElementById('ac-' + field));
   autoMatchTarif();
 }

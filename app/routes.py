@@ -186,6 +186,7 @@ def nouvelle_course():
     compte = current_compte()
     lieux = C.liste_lieux()
     tarifs = C.liste_tarifs()
+    villes = C.liste_villes()
     return render_template(
         "nouvelle_course.html",
         compte=compte,
@@ -193,8 +194,10 @@ def nouvelle_course():
         conducteurs=C.conducteurs_actifs(),
         lieux=lieux,
         tarifs=tarifs,
-        lieux_json=[{"id": l["id"], "nom": l["nom"], "adresse": l["adresse"] or ""}
-                    for l in lieux],
+        villes=villes,
+        villes_json=[{"id": v["id"], "nom": v["nom"]} for v in villes],
+        lieux_json=[{"id": l["id"], "nom": l["nom"], "adresse": l["adresse"] or "",
+                     "ville_id": l["ville_id"]} for l in lieux],
         tarifs_json=[{"id": t["id"], "prix": t["prix"],
                       "dep": t["lieu_depart_id"], "arr": t["lieu_arrivee_id"]}
                      for t in tarifs],
@@ -728,11 +731,32 @@ def estimation_toggle():
     return redirect(url_for("accounts.reglages"))
 
 
-# ── Lieux fréquents (cahier §6.2) — gérables par TOUT conducteur actif ───────
+# ── Villes desservies + Lieux fréquents (cahier §6.2) — tout conducteur actif ─
 @config_bp.route("/reglages/lieux")
 @login_required
 def lieux():
-    return render_template("config_lieux.html", lieux=C.liste_lieux())
+    return render_template("config_lieux.html",
+                           lieux=C.liste_lieux(), villes=C.liste_villes())
+
+
+@config_bp.route("/reglages/villes/ajouter", methods=["POST"])
+@login_required
+def ville_ajouter():
+    nom = (request.form.get("nom") or "").strip()
+    if not nom:
+        flash("Le nom de la ville est requis.", "error")
+        return redirect(url_for("config.lieux"))
+    C.creer_ville(nom)
+    flash("Ville ajoutée ✓", "success")
+    return redirect(url_for("config.lieux"))
+
+
+@config_bp.route("/reglages/villes/<int:ville_id>/supprimer", methods=["POST"])
+@login_required
+def ville_supprimer(ville_id: int):
+    C.supprimer_ville(ville_id)
+    flash("Ville supprimée.", "info")
+    return redirect(url_for("config.lieux"))
 
 
 @config_bp.route("/reglages/lieux/ajouter", methods=["POST"])
@@ -740,10 +764,11 @@ def lieux():
 def lieu_ajouter():
     nom = (request.form.get("nom") or "").strip()
     adresse = (request.form.get("adresse") or "").strip() or None
+    ville_id = _int_or_none(request.form.get("ville_id"))
     if not nom:
         flash("Le nom du lieu est requis.", "error")
         return redirect(url_for("config.lieux"))
-    C.creer_lieu(nom, adresse)
+    C.creer_lieu(nom, adresse, ville_id)
     flash("Lieu ajouté ✓", "success")
     return redirect(url_for("config.lieux"))
 
