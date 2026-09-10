@@ -31,7 +31,9 @@
 {% endblock %}
 
 {% block head %}
-  <link rel="stylesheet" href="{{ url_for('main.static', filename='app.css') }}">
+  {# ?v= : force le rechargement du CSS après mise à jour (iOS PWA met en cache
+     très agressivement les ressources de l'app ajoutée à l'écran d'accueil). #}
+  <link rel="stylesheet" href="{{ url_for('main.static', filename='app.css') }}?v={{ asset_version }}">
   {# --- PWA : installation écran d'accueil iOS/Android (cahier §7) --- #}
   <link rel="manifest" href="{{ url_for('main.static', filename='manifest.json') }}">
   <meta name="apple-mobile-web-app-capable" content="yes">

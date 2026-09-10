@@ -262,7 +262,28 @@
 /* ═════════════════════════════════════════════════════════════════════════
    11. Barre de navigation en bas (mobile-first) + menu « Plus ».
    ═════════════════════════════════════════════════════════════════════════ */
-body.has-bottomnav { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+/* La page occupe toujours au moins tout l'écran : sur une page courte (rien à
+   défiler), le fond ne s'arrête pas au-dessus de la barre — évite toute bande
+   sombre résiduelle en bas. 100dvh = hauteur d'écran « dynamique » (iOS). */
+body.has-bottomnav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Filet de sécurité : une bande couleur « surface » collée tout en bas, sur
+   toute la largeur, derrière la barre. Ainsi, quelle que soit la façon dont iOS
+   place la barre par rapport à la zone du « home indicator », aucun fond sombre
+   n'apparaît sous les raccourcis. */
+body.has-bottomnav::after {
+  content: "";
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: env(safe-area-inset-bottom);
+  background: var(--surface);
+  z-index: 59;
+  pointer-events: none;
+}
 
 .bottomnav {
   position: fixed;
@@ -274,11 +295,12 @@ body.has-bottomnav { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   gap: 2px;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  /* Les raccourcis collent au bas de l'écran ; on ne garde qu'un petit espace de
-     sécurité au-dessus du « home indicator » (au lieu de toute la zone d'encoche,
-     qui laissait une bande vide sous les icônes). Le fond de la barre couvre
-     malgré tout tout le bas, donc aucune bande sombre n'apparaît. */
-  padding: 8px 6px max(10px, calc(env(safe-area-inset-bottom) - 16px));
+  /* Les raccourcis collent au plus bas de l'écran : on ne garde qu'un tout petit
+     espace de sécurité au-dessus du « home indicator » iOS (barre-pilule fine),
+     au lieu de réserver toute la zone d'encoche qui laissait une large bande
+     sombre sous les icônes. Le fond de la barre + le filet `::after` couvrent
+     malgré tout tout le bas, donc aucun fond sombre n'apparaît. */
+  padding: 9px 6px max(6px, calc(env(safe-area-inset-bottom) - 22px));
 }
 .bn-item {
   flex: 1;

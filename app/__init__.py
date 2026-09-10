@@ -24,6 +24,21 @@ def register(flask_app) -> None:
     # même cadre — voir base/panel/routes/accounts_routes.py::reglages.
     flask_app.config["APP_REGLAGES_TEMPLATE"] = "app_reglages.html"
 
+    # Version des ressources statiques (app.css…) : dérivée de la date de
+    # modification du CSS. Ajoutée en `?v=` sur le <link> (voir _layout.html) pour
+    # forcer le rechargement après une mise à jour — iOS met en cache les
+    # ressources de l'app ajoutée à l'écran d'accueil de façon très agressive.
+    import os
+    _css = os.path.join(os.path.dirname(__file__), "static", "app.css")
+    try:
+        _asset_version = str(int(os.path.getmtime(_css)))
+    except OSError:
+        _asset_version = "0"
+
+    @flask_app.context_processor
+    def _inject_asset_version():
+        return {"asset_version": _asset_version}
+
     # La couche « base » suit la branche `main` du site-base : « Mettre à jour la
     # base » (sync_base) récupère les correctifs sans qu'un tag soit publié.
     # sync_base lit ce réglage via current_app.config (point d'extension prévu par
