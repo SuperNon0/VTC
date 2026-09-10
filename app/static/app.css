@@ -262,19 +262,7 @@
 /* ═════════════════════════════════════════════════════════════════════════
    11. Barre de navigation en bas (mobile-first) + menu « Plus ».
    ═════════════════════════════════════════════════════════════════════════ */
-body.has-bottomnav { padding-bottom: calc(74px + env(safe-area-inset-bottom)); }
-
-/* La zone d'encoche du bas (home indicator, iPhone) prend la couleur de la barre
-   → aucune bande sombre ne peut apparaître sous les raccourcis (PWA iOS). */
-body.has-bottomnav::after {
-  content: "";
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom);
-  background: var(--surface);
-  z-index: 59;
-  pointer-events: none;
-}
+body.has-bottomnav { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 
 .bottomnav {
   position: fixed;
@@ -286,7 +274,11 @@ body.has-bottomnav::after {
   gap: 2px;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  /* Les raccourcis collent au bas de l'écran ; on ne garde qu'un petit espace de
+     sécurité au-dessus du « home indicator » (au lieu de toute la zone d'encoche,
+     qui laissait une bande vide sous les icônes). Le fond de la barre couvre
+     malgré tout tout le bas, donc aucune bande sombre n'apparaît. */
+  padding: 8px 6px max(10px, calc(env(safe-area-inset-bottom) - 16px));
 }
 .bn-item {
   flex: 1;
