@@ -27,18 +27,20 @@
 
   {% if jour_actif == 'periode' %}
   {# Sélection d'une période : du … au … #}
-  <form method="get" class="fl-card" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
+  <form method="get" class="fl-card" style="margin-bottom:1rem">
     <input type="hidden" name="f" value="{{ filtre_actif }}">
     <input type="hidden" name="j" value="periode">
-    <div style="flex:1;min-width:130px">
-      <label class="fl-label">Du</label>
-      <input class="tx-input" type="date" name="du" value="{{ du }}">
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:120px">
+        <label class="fl-label">Du</label>
+        <input class="tx-input" type="date" name="du" value="{{ du }}">
+      </div>
+      <div style="flex:1;min-width:120px">
+        <label class="fl-label">Au</label>
+        <input class="tx-input" type="date" name="au" value="{{ au }}">
+      </div>
     </div>
-    <div style="flex:1;min-width:130px">
-      <label class="fl-label">Au</label>
-      <input class="tx-input" type="date" name="au" value="{{ au }}">
-    </div>
-    <button type="submit" class="btn primary small">OK</button>
+    <button type="submit" class="btn primary small" style="width:100%;margin-top:.7rem">Appliquer la période</button>
   </form>
   {% endif %}
 
