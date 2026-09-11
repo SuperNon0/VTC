@@ -9,23 +9,46 @@
     <a href="{{ url_for('main.nouvelle_course') }}" class="btn primary small">+ Nouvelle course</a>
   </div>
 
-  {# Filtres : statut + jour (listes déroulantes) #}
+  {# Bascule de vue : Liste / Mois / Semaine #}
+  <div class="tx-vues">
+    {% for vk, vlbl in [('liste','Liste'),('mois','Mois'),('semaine','Semaine')] %}
+    <a class="tx-vue{% if vue == vk %} on{% endif %}"
+       href="{{ url_for('main.dashboard', f=filtre_actif, vue=vk) }}">{{ vlbl }}</a>
+    {% endfor %}
+  </div>
+
+  {# Filtres : statut (toujours) + jour (vue liste seulement) #}
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem">
     <select class="tx-input" style="flex:1;min-width:150px" aria-label="Filtrer par statut"
-            onchange="location.href='{{ url_for('main.dashboard', j=jour_actif, du=du or none, au=au or none) }}' + '&f=' + this.value">
+            onchange="location.href='{{ url_for('main.dashboard', vue=vue, j=jour_actif, du=du or none, au=au or none) }}' + '&f=' + this.value">
       {% for key, lbl, _st, _o in filtres %}
       <option value="{{ key }}" {{ 'selected' if key == filtre_actif else '' }}>{{ lbl }}</option>
       {% endfor %}
     </select>
+    {% if vue == 'liste' %}
     <select class="tx-input" style="flex:1;min-width:150px" aria-label="Filtrer par jour"
             onchange="location.href='{{ url_for('main.dashboard', f=filtre_actif, du=du or none, au=au or none) }}' + '&j=' + this.value">
       {% for key, lbl in jour_filtres %}
       <option value="{{ key }}" {{ 'selected' if key == jour_actif else '' }}>{{ lbl }}</option>
       {% endfor %}
     </select>
+    {% endif %}
   </div>
 
-  {% if jour_actif == 'periode' %}
+  {% if vue == 'liste' and jour_actif == 'jour' %}
+  {# Un jour précis #}
+  <form method="get" class="fl-card" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
+    <input type="hidden" name="f" value="{{ filtre_actif }}">
+    <input type="hidden" name="j" value="jour">
+    <div style="flex:1;min-width:150px">
+      <label class="fl-label">Jour</label>
+      <input class="tx-input" type="date" name="du" value="{{ du }}">
+    </div>
+    <button type="submit" class="btn primary small">Afficher</button>
+  </form>
+  {% endif %}
+
+  {% if vue == 'liste' and jour_actif == 'periode' %}
   {# Sélection d'une période : du … au … #}
   <form method="get" class="fl-card" style="margin-bottom:1rem">
     <input type="hidden" name="f" value="{{ filtre_actif }}">
@@ -44,6 +67,12 @@
   </form>
   {% endif %}
 
+  {# ── Vue calendrier (mois / semaine) ─────────────────────────────────────── #}
+  {% if vue != 'liste' %}
+  <div id="cal-root" data-vue="{{ vue }}" data-f="{{ filtre_actif }}"></div>
+  {% endif %}
+
+  {% if vue == 'liste' %}
   {% if push_available and not deja_abonne %}
   <div class="fl-card tx-push" id="push-banner">
     <div>
@@ -94,6 +123,7 @@
     {% endfor %}
   </section>
   {% endfor %}
+  {% endif %}{# fin vue liste #}
 </main>
 
 <div class="toast" id="toast"></div>
@@ -148,5 +178,89 @@ async function activerPush() {
     console.warn(e); toast('Erreur : ' + e.message, true); btn.disabled = false;
   }
 }
+</script>
+
+{# ── Vue calendrier (mois / semaine), construite côté client ─────────────── #}
+<script>window.CAL = {{ cal_json|tojson }};</script>
+<script>
+(function () {
+  var root = document.getElementById('cal-root');
+  if (!root) return;
+  var VUE = root.dataset.vue, F = root.dataset.f || 'actives';
+  var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août',
+              'septembre','octobre','novembre','décembre'];
+  var JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  var JOURS_C = ['L','M','M','J','V','S','D'];
+  var ST = { a_faire:'--pending', en_cours:'--accent-3', terminee:'--accent-2', annulee:'--muted' };
+  var offset = 0;   // décalage en mois (vue mois) ou en semaines (vue semaine)
+
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function key(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function parDate(){
+    var m = {};
+    (window.CAL||[]).forEach(function(c){
+      if(!c.ts) return; var d=new Date(c.ts*1000); (m[key(d)]=m[key(d)]||[]).push(c);
+    });
+    return m;
+  }
+  function hhmm(ts){ var d=new Date(ts*1000); return pad(d.getHours())+'h'+pad(d.getMinutes()); }
+  function lienJour(k){ return '?vue=liste&f='+encodeURIComponent(F)+'&j=jour&du='+k; }
+
+  function renderMois() {
+    var base = new Date(); base.setDate(1); base.setMonth(base.getMonth()+offset);
+    var y=base.getFullYear(), m=base.getMonth();
+    var startDow=(new Date(y,m,1).getDay()+6)%7;   // lundi=0
+    var nb=new Date(y,m+1,0).getDate();
+    var by=parDate(), today=key(new Date());
+    var h='<div class="cal-head"><button type="button" class="cal-nav" data-d="-1">‹</button>'
+      + '<b>'+MOIS[m]+' '+y+'</b>'
+      + '<button type="button" class="cal-nav" data-d="1">›</button></div>';
+    h+='<div class="cal-grid">';
+    JOURS_C.forEach(function(j){ h+='<div class="cal-dow">'+j+'</div>'; });
+    for(var i=0;i<startDow;i++) h+='<div></div>';
+    for(var day=1;day<=nb;day++){
+      var k=y+'-'+pad(m+1)+'-'+pad(day), list=by[k]||[];
+      h+='<a class="cal-cell'+(list.length?' has':'')+(k===today?' today':'')+'" href="'+lienJour(k)+'">'
+       + '<span class="cal-num">'+day+'</span>'
+       + (list.length?'<span class="cal-dot">'+list.length+'</span>':'')+'</a>';
+    }
+    h+='</div>';
+    return h;
+  }
+
+  function renderSemaine() {
+    var base=new Date(); base.setHours(0,0,0,0); base.setDate(base.getDate()+offset*7);
+    var mon=new Date(base); mon.setDate(base.getDate()-((base.getDay()+6)%7));
+    var fin=new Date(mon); fin.setDate(mon.getDate()+6);
+    var by=parDate(), today=key(new Date());
+    var h='<div class="cal-head"><button type="button" class="cal-nav" data-d="-1">‹</button>'
+      + '<b>'+mon.getDate()+' '+MOIS[mon.getMonth()]+' – '+fin.getDate()+' '+MOIS[fin.getMonth()]+'</b>'
+      + '<button type="button" class="cal-nav" data-d="1">›</button></div>';
+    for(var i=0;i<7;i++){
+      var d=new Date(mon); d.setDate(mon.getDate()+i); var k=key(d);
+      var list=(by[k]||[]).slice().sort(function(a,b){return a.ts-b.ts;});
+      h+='<div class="cal-day'+(k===today?' today':'')+'">'
+       + '<div class="cal-day-h"><a href="'+lienJour(k)+'">'+JOURS[i]+' '+d.getDate()+' '+MOIS[d.getMonth()].slice(0,4)+'.</a></div>';
+      if(!list.length) h+='<div class="cal-empty">—</div>';
+      list.forEach(function(c){
+        h+='<a class="cal-course st-'+c.statut+'" href="/course/'+c.id+'">'
+         + '<b>'+hhmm(c.ts)+'</b> '+esc(c.client||'Client')
+         + '<span class="cal-tr">'+esc(c.depart)+' → '+esc(c.arrivee)+(c.prix!=null?' · '+c.prix.toFixed(2)+' €':'')+'</span></a>';
+      });
+      h+='</div>';
+    }
+    return h;
+  }
+
+  function render(){
+    root.innerHTML = (VUE==='semaine') ? renderSemaine() : renderMois();
+    Array.prototype.forEach.call(root.querySelectorAll('.cal-nav'), function(b){
+      b.addEventListener('click', function(){ offset += parseInt(b.dataset.d,10); render(); });
+    });
+  }
+  render();
+})();
 </script>
 {% endblock %}

@@ -122,6 +122,7 @@ JOUR_FILTRES = [
     ("tous",       "Tous les jours"),
     ("aujourdhui", "Aujourd'hui"),
     ("demain",     "Demain"),
+    ("jour",       "Un jour…"),
     ("periode",    "Période…"),
 ]
 
@@ -140,6 +141,14 @@ def _jour_bornes(key: str, du_str: str, au_str: str):
     if key == "demain":
         d = jour0 + timedelta(days=1)
         return int(d.timestamp()), int(fin_de(d).timestamp())
+    if key == "jour":
+        try:
+            if du_str:
+                d = datetime.strptime(du_str, "%Y-%m-%d")
+                return int(d.timestamp()), int(fin_de(d).timestamp())
+        except ValueError:
+            pass
+        return None, None
     if key == "periode":
         debut = fin = None
         try:
@@ -173,6 +182,20 @@ def dashboard():
     debut, fin = _jour_bornes(jour, du, au)
     rows = C.courses_assignees(compte["id"], statuts=statuts, order=order,
                                debut=debut, fin=fin)
+    # Vue : liste (défaut) | mois | semaine. Pour le calendrier, on passe toutes
+    # les courses filtrées par statut (sans filtre de jour) en JSON.
+    vue = request.args.get("vue") or "liste"
+    if vue not in ("liste", "mois", "semaine"):
+        vue = "liste"
+    cal_json = []
+    if vue != "liste":
+        for r in C.courses_assignees(compte["id"], statuts=statuts, order="ASC"):
+            cal_json.append({
+                "id": r["id"], "ts": r["quand"] or 0,
+                "client": r["client_nom"] or "",
+                "depart": r["depart"] or "", "arrivee": r["arrivee"] or "",
+                "prix": r["prix"], "statut": r["statut"],
+            })
     return render_template(
         "dashboard.html",
         compte=compte,
@@ -184,6 +207,8 @@ def dashboard():
         jour_filtres=JOUR_FILTRES,
         jour_actif=jour,
         du=du, au=au,
+        vue=vue,
+        cal_json=cal_json,
         push_available=webpush.is_available(),
         deja_abonne=webpush.compte_a_des_souscriptions(compte["id"]),
     )
