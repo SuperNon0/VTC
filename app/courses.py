@@ -133,13 +133,22 @@ def _clause_statuts(statuts):
     return " AND statut IN (%s)" % ",".join("?" * len(statuts)), statuts
 
 
-def courses_assignees(conducteur_id: int, statuts=None, order: str = "ASC") -> list:
+def courses_assignees(conducteur_id: int, statuts=None, order: str = "ASC",
+                      debut: int | None = None, fin: int | None = None) -> list:
     """Courses assignées à un conducteur (calendrier personnel §6.6).
 
-    `statuts` = ensemble de statuts à garder (None = tous). Les courses passées
-    ne sont PLUS masquées : elles restent tant qu'elles ne sont pas « terminée ».
+    `statuts` = ensemble de statuts à garder (None = tous). `debut`/`fin` =
+    bornes (timestamps) sur l'heure de course, pour un filtre par jour/période.
+    Les courses passées ne sont PLUS masquées : elles restent tant qu'elles ne
+    sont pas « terminée ».
     """
     frag, params = _clause_statuts(statuts)
+    if debut is not None:
+        frag += " AND quand >= ?"
+        params.append(debut)
+    if fin is not None:
+        frag += " AND quand <= ?"
+        params.append(fin)
     sens = "DESC" if str(order).upper() == "DESC" else "ASC"
     return get_db().execute(
         "SELECT * FROM courses WHERE conducteur_id = ?" + frag

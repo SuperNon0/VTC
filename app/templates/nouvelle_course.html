@@ -11,12 +11,13 @@
 {% set sel_tarif = sel_tarif|default('') %}
 {% set prix_libre_val = prix_libre_val|default('') %}
 {% set sel_conducteur = sel_conducteur|default(compte['id']) %}
-{% block title %}{{ 'Modifier la course' if edit else 'Nouvelle course' }} — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
-{% block badge %}{{ 'modifier course' if edit else 'nouvelle course' }}{% endblock %}
+{% set titre = titre|default('Modifier la course' if edit else 'Nouvelle course') %}
+{% block title %}{{ titre }} — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}{{ titre|lower }}{% endblock %}
 
 {% block app_content %}
 <main class="tx-main tx-form-wrap">
-  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">{{ 'Modifier la course' if edit else 'Nouvelle course' }}</h2>
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">{{ titre }}</h2>
 
   {# ── Extraction IA d'un message client (cahier §6.1) ─────────────────────── #}
   <section class="fl-card" style="margin-bottom:1rem">
@@ -79,6 +80,12 @@
       </div>
       {# Adresses habituelles du client sélectionné (un clic = remplit le champ). #}
       <div class="tx-chips" id="cli-adr-depart" style="margin-top:.4rem"></div>
+    </div>
+
+    {# Inverser départ ↔ arrivée (adresses + villes) #}
+    <div style="display:flex;justify-content:center;margin:-2px 0 4px">
+      <button type="button" class="btn ghost small icon-btn" onclick="swapDepartArrivee()"
+              title="Inverser départ et arrivée" aria-label="Inverser départ et arrivée">{{ ic.icon('swapv', 18) }}</button>
     </div>
 
     {# ── Dépose ────────────────────────────────────────────────────────────── #}
@@ -234,6 +241,18 @@ function onVille(field) {
   }
   showLieux(field, inp.value);
   autoMatchTarif();   // changer de ville peut suffire à retrouver un tarif ville→ville
+}
+
+// ── Inverser départ ↔ arrivée (adresse + lieu lié + ville) ───────────────────
+function _swapVal(idA, idB) {
+  var a = document.getElementById(idA), b = document.getElementById(idB);
+  var t = a.value; a.value = b.value; b.value = t;
+}
+function swapDepartArrivee() {
+  _swapVal('depart', 'arrivee');
+  _swapVal('depart_lieu_id', 'arrivee_lieu_id');
+  _swapVal('ville-depart', 'ville-arrivee');
+  autoMatchTarif();
 }
 
 // ── Lieux : autocomplétion filtrée par la ville choisie (§6.2) ───────────────

@@ -3,8 +3,31 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import quote_plus
+
+
+def _sans_accents(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "")
+    return "".join(c for c in s if not unicodedata.combining(c)).casefold()
+
+
+def _cle_cmp(s: str) -> str:
+    """Clé de comparaison tolérante : sans accents, casse, espaces ni ponctuation
+    (« Le Grau du Roi » == « Le Grau-du-Roi »)."""
+    return re.sub(r"[^a-z0-9]", "", _sans_accents(s))
+
+
+def adresse_complete(adresse: str | None, ville: str | None) -> str:
+    """Adresse + ville, sans répéter la ville si elle est déjà dans l'adresse
+    (comparaison tolérante aux tirets/espaces). Ex. « 227b Rte des Marines » +
+    Le Grau-du-Roi → « 227b Rte des Marines, Le Grau-du-Roi »."""
+    base = (adresse or "").strip()
+    ville = (ville or "").strip()
+    if ville and _cle_cmp(ville) and _cle_cmp(ville) not in _cle_cmp(base):
+        base = (base + ", " + ville) if base else ville
+    return base
 
 _MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
          "août", "septembre", "octobre", "novembre", "décembre"]
@@ -43,6 +66,9 @@ def format_tel(raw: str | None) -> str:
     return " ".join(d[i:i + 2] for i in range(0, len(d), 2))
 
 
+_JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+
 def fmt_dt(ts: int | None, with_time: bool = True) -> str:
     """Formate un timestamp Unix en français : « 12 août 2026 à 14 h 30 »."""
     if not ts:
@@ -52,6 +78,14 @@ def fmt_dt(ts: int | None, with_time: bool = True) -> str:
     if with_time:
         s += f" à {d.hour} h {d.minute:02d}"
     return s
+
+
+def fmt_jour(ts: int | None) -> str:
+    """Jour de la semaine + date : « lundi 21 septembre 2026 »."""
+    if not ts:
+        return "Sans date"
+    d = datetime.fromtimestamp(ts)
+    return f"{_JOURS[d.weekday()]} {d.day} {_MOIS[d.month - 1]} {d.year}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

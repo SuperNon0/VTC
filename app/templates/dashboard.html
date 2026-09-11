@@ -13,9 +13,34 @@
   <div class="tx-filtres">
     {% for key, lbl, _st, _o in filtres %}
     <a class="tx-chip{% if key == filtre_actif %} on{% endif %}"
-       href="{{ url_for('main.dashboard', f=key) }}">{{ lbl }}</a>
+       href="{{ url_for('main.dashboard', f=key, j=jour_actif, du=du or none, au=au or none) }}">{{ lbl }}</a>
     {% endfor %}
   </div>
+
+  {# Filtres par jour #}
+  <div class="tx-filtres">
+    {% for key, lbl in jour_filtres %}
+    <a class="tx-chip{% if key == jour_actif %} on{% endif %}"
+       href="{{ url_for('main.dashboard', f=filtre_actif, j=key, du=du or none, au=au or none) }}">{{ lbl }}</a>
+    {% endfor %}
+  </div>
+
+  {% if jour_actif == 'periode' %}
+  {# Sélection d'une période : du … au … #}
+  <form method="get" class="fl-card" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
+    <input type="hidden" name="f" value="{{ filtre_actif }}">
+    <input type="hidden" name="j" value="periode">
+    <div style="flex:1;min-width:130px">
+      <label class="fl-label">Du</label>
+      <input class="tx-input" type="date" name="du" value="{{ du }}">
+    </div>
+    <div style="flex:1;min-width:130px">
+      <label class="fl-label">Au</label>
+      <input class="tx-input" type="date" name="au" value="{{ au }}">
+    </div>
+    <button type="submit" class="btn primary small">OK</button>
+  </form>
+  {% endif %}
 
   {% if push_available and not deja_abonne %}
   <div class="fl-card tx-push" id="push-banner">

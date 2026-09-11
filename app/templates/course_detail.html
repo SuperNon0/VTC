@@ -8,6 +8,7 @@
   <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <a href="{{ url_for('main.dashboard') }}" class="btn ghost small">← Retour au calendrier</a>
     <a href="{{ url_for('main.course_modifier', course_id=c.id) }}" class="btn ghost small" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('edit', 16) }} Modifier</a>
+    <a href="{{ url_for('main.course_dupliquer', course_id=c.id) }}" class="btn ghost small" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('copy', 16) }} Dupliquer</a>
   </div>
 
   <article class="fl-card">

@@ -38,9 +38,10 @@ from .ai import is_configured as ai_configured
 from .helpers import (CAL_PLACEHOLDERS, DEFAULT_CAL_NOTES, DEFAULT_CAL_TITLE,
                       NOTIF_PLACEHOLDERS, DEFAULT_NOTIF_BODY,
                       DEFAULT_NOTIF_TITLE, cal_notes_template,
-                      cal_title_template, course_ics, fmt_dt, format_tel,
-                      google_calendar_url, label_compte, notif_body_template,
-                      notif_corps, notif_title_template, notif_titre, tel_digits)
+                      adresse_complete, cal_title_template, course_ics, fmt_dt,
+                      fmt_jour, format_tel, google_calendar_url, label_compte,
+                      notif_body_template, notif_corps, notif_title_template,
+                      notif_titre, tel_digits)
 
 # Blueprint « écrans » : sert aussi les assets métier (app.css, sw.js, icônes,
 # manifest) sous /app/ — indépendant du /static de la base.
@@ -66,6 +67,8 @@ def _inject_app_globals():
         # Téléphone : affichage toujours espacé + chiffres pour un lien tel:.
         "format_tel": format_tel,
         "tel_digits": tel_digits,
+        # Adresse + ville (sans doublon) pour l'affichage/le lien cliquable.
+        "adresse_complete": adresse_complete,
     }
 
 
@@ -84,7 +87,7 @@ def _grouper_par_jour(rows) -> list:
         ts = row["quand"] or 0
         jour = datetime.fromtimestamp(ts).strftime("%Y-%m-%d") if ts else "—"
         if not groupes or groupes[-1]["jour"] != jour:
-            label = fmt_dt(ts, with_time=False) if ts else "Sans date"
+            label = fmt_jour(ts)   # « lundi 21 septembre 2026 »
             groupes.append({"jour": jour, "label": label, "courses": []})
         groupes[-1]["courses"].append(_course_view(row))
     return groupes
@@ -114,6 +117,45 @@ def _resoudre_filtre(defaut: str = "actives"):
     return key, statuts, order
 
 
+# Filtres par jour (accueil)
+JOUR_FILTRES = [
+    ("tous",       "Tous les jours"),
+    ("aujourdhui", "Aujourd'hui"),
+    ("demain",     "Demain"),
+    ("periode",    "Période…"),
+]
+
+
+def _jour_bornes(key: str, du_str: str, au_str: str):
+    """(debut, fin) en timestamps selon le filtre jour, ou (None, None)."""
+    from datetime import timedelta
+    now = datetime.now()
+    jour0 = datetime(now.year, now.month, now.day)
+
+    def fin_de(d):
+        return d + timedelta(days=1) - timedelta(seconds=1)
+
+    if key == "aujourdhui":
+        return int(jour0.timestamp()), int(fin_de(jour0).timestamp())
+    if key == "demain":
+        d = jour0 + timedelta(days=1)
+        return int(d.timestamp()), int(fin_de(d).timestamp())
+    if key == "periode":
+        debut = fin = None
+        try:
+            if du_str:
+                debut = int(datetime.strptime(du_str, "%Y-%m-%d").timestamp())
+        except ValueError:
+            pass
+        try:
+            if au_str:
+                fin = int(fin_de(datetime.strptime(au_str, "%Y-%m-%d")).timestamp())
+        except ValueError:
+            pass
+        return debut, fin
+    return None, None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Calendrier personnel (dashboard / accueil) — cahier §6.6
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,7 +165,14 @@ def dashboard():
     compte = current_compte()
     C.promouvoir_courses_dues()   # « à faire » dont l'heure est passée → « en cours »
     filtre, statuts, order = _resoudre_filtre("actives")
-    rows = C.courses_assignees(compte["id"], statuts=statuts, order=order)
+    jour = request.args.get("j") or "tous"
+    if jour not in {k for k, _ in JOUR_FILTRES}:
+        jour = "tous"
+    du = (request.args.get("du") or "").strip()
+    au = (request.args.get("au") or "").strip()
+    debut, fin = _jour_bornes(jour, du, au)
+    rows = C.courses_assignees(compte["id"], statuts=statuts, order=order,
+                               debut=debut, fin=fin)
     return render_template(
         "dashboard.html",
         compte=compte,
@@ -132,6 +181,9 @@ def dashboard():
         total=len(rows),
         filtres=FILTRES_STATUT,
         filtre_actif=filtre,
+        jour_filtres=JOUR_FILTRES,
+        jour_actif=jour,
+        du=du, au=au,
         push_available=webpush.is_available(),
         deja_abonne=webpush.compte_a_des_souscriptions(compte["id"]),
     )
@@ -272,6 +324,36 @@ def course_modifier(course_id: int):
         cancel_url=url_for("main.course_detail", course_id=course_id),
         submit_label="Enregistrer",
         date_val=date_val, heure_val=heure_val,
+        sel_tarif=sel_tarif, prix_libre_val=prix_libre_val,
+        sel_conducteur=course["conducteur_id"],
+    )
+    return render_template("nouvelle_course.html", **ctx)
+
+
+@main_bp.route("/course/<int:course_id>/dupliquer")
+@login_required
+def course_dupliquer(course_id: int):
+    """Nouvelle course pré-remplie à partir d'une existante, SANS l'horaire."""
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if (compte["id"] not in (course["conducteur_id"], course["createur_id"])
+            and not is_super_admin()):
+        abort(403)
+    ctx = _course_form_ctx(compte)
+    if course["tarif_id"] and course["prix_source"] == "grille":
+        sel_tarif, prix_libre_val = str(course["tarif_id"]), ""
+    elif course["prix"] is not None:
+        sel_tarif, prix_libre_val = "autre", f"{course['prix']:.2f}"
+    else:
+        sel_tarif, prix_libre_val = "", ""
+    ctx.update(
+        edit=False, crs=course, titre="Dupliquer la course",
+        form_action=url_for("main.api_creer_course"),
+        cancel_url=url_for("main.course_detail", course_id=course_id),
+        submit_label="Créer la course",
+        date_val="", heure_val="",         # on repart sans horaire
         sel_tarif=sel_tarif, prix_libre_val=prix_libre_val,
         sel_conducteur=course["conducteur_id"],
     )
