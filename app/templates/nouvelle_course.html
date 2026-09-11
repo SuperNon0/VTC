@@ -204,10 +204,31 @@ function villeSel(field) {
   var s = document.getElementById('ville-' + field);
   return s ? (parseInt(s.value, 10) || null) : null;
 }
-// Choix d'une ville → propose directement les lieux de cette ville.
+function villeNom(field) {
+  var id = villeSel(field);
+  if (!id) return '';
+  var v = (window.VILLES || []).find(function (x) { return x.id === id; });
+  return v ? v.nom : '';
+}
+// Le champ contient-il « juste une ville connue » (donc auto-renseigné) ?
+function estJusteUneVille(val) {
+  val = (val || '').trim();
+  return !!val && (window.VILLES || []).some(function (v) { return v.nom === val; });
+}
+// Choix d'une ville → renseigne le champ avec le nom de la ville s'il est vide
+// (ainsi une course « juste une ville » garde bien l'info du lieu), puis propose
+// les lieux de cette ville.
 function onVille(field) {
   document.getElementById(field + '_lieu_id').value = '';
-  showLieux(field, document.getElementById(field).value);
+  var inp = document.getElementById(field);
+  var nom = villeNom(field);
+  if (nom) {
+    // Champ vide OU contenant déjà juste une ville → on met la nouvelle ville.
+    if (!inp.value.trim() || estJusteUneVille(inp.value)) inp.value = nom;
+  } else if (estJusteUneVille(inp.value)) {
+    inp.value = '';   // ville remise à « — » : on vide le repli automatique
+  }
+  showLieux(field, inp.value);
   autoMatchTarif();   // changer de ville peut suffire à retrouver un tarif ville→ville
 }
 
