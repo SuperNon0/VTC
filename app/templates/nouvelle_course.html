@@ -509,5 +509,22 @@ document.querySelector('form.tx-form').addEventListener('submit', function () {
     if (inp) inp.value = combineAdr('', inp.value.trim(), villeNom(field));
   });
 });
+
+// Au chargement : si un champ contient déjà une adresse (ex. en modification) et
+// que son menu « ville » est vide, on devine la ville depuis le texte et on la
+// re-sélectionne. Ainsi la ville reste affichée en haut, pas seulement dans l'adresse.
+function devinerVilleDepuisTexte(field) {
+  var inp = document.getElementById(field);
+  var vs = document.getElementById('ville-' + field);
+  if (!inp || !vs || vs.value) return;          // déjà une ville choisie → on ne touche pas
+  var n = _norm(inp.value);
+  if (!n) return;
+  var best = null;
+  (window.VILLES || []).forEach(function (v) {
+    if (n.indexOf(_norm(v.nom)) !== -1 && (!best || v.nom.length > best.nom.length)) best = v;
+  });
+  if (best) vs.value = String(best.id);
+}
+['depart', 'arrivee'].forEach(devinerVilleDepuisTexte);
 </script>
 {% endblock %}
