@@ -495,5 +495,15 @@ document.addEventListener('click', function (e) {
     });
   }
 });
+
+// À l'envoi : on fusionne TOUJOURS la ville choisie dans l'adresse (sans doublon).
+// Ainsi, quel que soit l'ordre (ville puis adresse tapée, ou l'inverse), la ville
+// est bien enregistrée avec le départ / l'arrivée.
+document.querySelector('form.tx-form').addEventListener('submit', function () {
+  ['depart', 'arrivee'].forEach(function (field) {
+    var inp = document.getElementById(field);
+    if (inp) inp.value = combineAdr('', inp.value.trim(), villeNom(field));
+  });
+});
 </script>
 {% endblock %}
