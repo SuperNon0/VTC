@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Grilles tarifaires — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}tarifs{% endblock %}
 
@@ -9,14 +10,14 @@
   {% if villes %}
   <optgroup label="Villes">
     {% for v in villes %}
-    <option value="v:{{ v.id }}" {{ 'selected' if sel == 'v:' ~ v.id else '' }}>🏙️ {{ v.nom }}</option>
+    <option value="v:{{ v.id }}" {{ 'selected' if sel == 'v:' ~ v.id else '' }}>{{ v.nom }}</option>
     {% endfor %}
   </optgroup>
   {% endif %}
   {% if lieux %}
   <optgroup label="Lieux fréquents">
     {% for l in lieux %}
-    <option value="l:{{ l.id }}" {{ 'selected' if sel == 'l:' ~ l.id else '' }}>📍 {{ l.nom }}</option>
+    <option value="l:{{ l.id }}" {{ 'selected' if sel == 'l:' ~ l.id else '' }}>{{ l.nom }}</option>
     {% endfor %}
   </optgroup>
   {% endif %}
@@ -64,7 +65,7 @@
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" name="bidir" value="1">
-          <span>↔ Valable dans les deux sens (aller <b>et</b> retour)</span>
+          <span style="display:inline-flex;align-items:center;gap:5px">{{ ic.icon('swap', 15) }} Valable dans les deux sens (aller <b>et</b> retour)</span>
         </label>
         <div style="display:flex;justify-content:flex-end">
           <button type="submit" class="btn primary">Ajouter</button>
@@ -80,16 +81,16 @@
     <div class="fl-card" style="margin-bottom:10px">
       {# Ligne compacte : « Départ → Arrivée — prix », + stylo (modifier) + croix (supprimer). #}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <div class="fl-title-serif" style="font-size:1.05rem;min-width:0">
-          {{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €
-          {% if t.bidirectionnel %}<span class="tx-muted" style="font-size:.8rem;font-family:var(--font-mono)"> · ↔</span>{% endif %}
+        <div class="fl-title-serif" style="font-size:1.05rem;min-width:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>{{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €</span>
+          {% if t.bidirectionnel %}<span class="tx-muted" title="Valable dans les deux sens" style="display:inline-flex;color:var(--accent-2, var(--accent))">{{ ic.icon('swap', 16) }}</span>{% endif %}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button type="button" class="btn ghost small" title="Modifier"
-                  onclick="toggleTarifEdit(this)">✏️</button>
+          <button type="button" class="btn ghost small icon-btn" title="Modifier"
+                  aria-label="Modifier" onclick="toggleTarifEdit(this)">{{ ic.icon('edit', 17) }}</button>
           <form method="post" action="{{ url_for('config.tarif_supprimer', tarif_id=t.id) }}"
                 onsubmit="return confirm('Supprimer cette grille ?')" style="display:inline">
-            <button type="submit" class="btn danger small" title="Supprimer">✕</button>
+            <button type="submit" class="btn danger small icon-btn" title="Supprimer" aria-label="Supprimer">{{ ic.icon('trash', 17) }}</button>
           </form>
         </div>
       </div>
@@ -112,7 +113,7 @@
         <input class="tx-input" type="text" inputmode="decimal" name="prix" value="{{ '%.2f'|format(t.prix) }}" required>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" name="bidir" value="1" {{ 'checked' if t.bidirectionnel else '' }}>
-          <span>↔ Valable dans les deux sens</span>
+          <span style="display:inline-flex;align-items:center;gap:5px">{{ ic.icon('swap', 15) }} Valable dans les deux sens</span>
         </label>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button type="submit" class="btn primary small">Enregistrer</button>

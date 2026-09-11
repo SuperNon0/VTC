@@ -6,26 +6,27 @@
    N.B. : la page /reglages de la base n'inclut PAS app.css → on n'utilise que
    les classes du thème de base (fl-card, acct-section, btn, access-note).
 ──────────────────────────────────────────────────────────────────────────── #}
+{% import "_icons.html" as ic %}
 <section class="acct-section">
   <h3>Réglages taxi/VTC</h3>
 
   {# Même présentation que le menu « Plus » (grosses icônes, cartes cliquables). #}
   <div class="plus-list">
     <a class="plus-row" href="{{ url_for('config.clients') }}">
-      <span class="plus-ic">👥</span><span>Clients habitués</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('users', 22, 'var(--accent)') }}</span><span>Clients habitués</span><span class="plus-arrow">›</span></a>
     <a class="plus-row" href="{{ url_for('config.lieux') }}">
-      <span class="plus-ic">📍</span><span>Lieux fréquents</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('pin', 22, 'var(--accent)') }}</span><span>Lieux fréquents</span><span class="plus-arrow">›</span></a>
     <a class="plus-row" href="{{ url_for('config.tarifs') }}">
-      <span class="plus-ic">💶</span><span>Grilles tarifaires</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('euro', 22, 'var(--accent)') }}</span><span>Grilles tarifaires</span><span class="plus-arrow">›</span></a>
     {% if is_super_admin %}
     <a class="plus-row" href="{{ url_for('config.noms') }}">
-      <span class="plus-ic">🪪</span><span>Noms d'affichage des conducteurs</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('badge', 22, 'var(--accent)') }}</span><span>Noms d'affichage des conducteurs</span><span class="plus-arrow">›</span></a>
     <a class="plus-row" href="{{ url_for('config.ia') }}">
-      <span class="plus-ic">🤖</span><span>Extraction IA (message client)</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('sparkles', 22, 'var(--accent)') }}</span><span>Extraction IA (message client)</span><span class="plus-arrow">›</span></a>
     <a class="plus-row" href="{{ url_for('config.calendrier') }}">
-      <span class="plus-ic">📆</span><span>Modèle d'export calendrier</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('calendar', 22, 'var(--accent)') }}</span><span>Modèle d'export calendrier</span><span class="plus-arrow">›</span></a>
     <a class="plus-row" href="{{ url_for('config.notifications') }}">
-      <span class="plus-ic">🔔</span><span>Notifications (message + test)</span><span class="plus-arrow">›</span></a>
+      <span class="plus-ic">{{ ic.icon('bell', 22, 'var(--accent)') }}</span><span>Notifications (message + test)</span><span class="plus-arrow">›</span></a>
     {% endif %}
   </div>
 </section>

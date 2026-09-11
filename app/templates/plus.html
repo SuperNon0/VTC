@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Plus — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}plus{% endblock %}
 
@@ -13,21 +14,21 @@
   <div class="plus-list">
     {# Écrans (pas des réglages) #}
     <a class="plus-row" href="{{ url_for('main.mes_stats') }}">
-      <span class="plus-ic">📊</span><span>Mes statistiques</span><span class="plus-arrow">›</span>
+      <span class="plus-ic">{{ ic.icon('chart', 22, 'var(--accent)') }}</span><span>Mes statistiques</span><span class="plus-arrow">›</span>
     </a>
 
     {# Toute la configuration métier est REGROUPÉE dans « Réglages » (plus de doublon). #}
     <a class="plus-row" href="{{ url_for('accounts.reglages') }}">
-      <span class="plus-ic">🧩</span><span>Réglages de l'application</span><span class="plus-arrow">›</span>
+      <span class="plus-ic">{{ ic.icon('sliders', 22, 'var(--accent)') }}</span><span>Réglages de l'application</span><span class="plus-arrow">›</span>
     </a>
     {% if is_super_admin %}
     <a class="plus-row" href="{{ url_for('accounts.parametres') }}">
-      <span class="plus-ic">⚙️</span><span>Paramètres &amp; comptes (site)</span><span class="plus-arrow">›</span>
+      <span class="plus-ic">{{ ic.icon('settings', 22, 'var(--accent)') }}</span><span>Paramètres &amp; comptes (site)</span><span class="plus-arrow">›</span>
     </a>
     {% endif %}
 
     <a class="plus-row plus-out" href="{{ url_for('auth.logout') }}">
-      <span class="plus-ic">↩︎</span><span>Déconnexion</span><span class="plus-arrow">›</span>
+      <span class="plus-ic">{{ ic.icon('logout', 22) }}</span><span>Déconnexion</span><span class="plus-arrow">›</span>
     </a>
   </div>
 </main>

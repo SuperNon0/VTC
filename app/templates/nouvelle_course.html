@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {# Valeurs par défaut : le même gabarit sert à créer ET à modifier une course. #}
 {% set edit = edit|default(false) %}
 {% set crs = crs|default(none) %}
@@ -24,7 +25,7 @@
     <textarea id="ia-msg" class="tx-input tx-area" rows="3"
               placeholder="Ex : Bonjour c'est Marie, pouvez-vous me prendre à la gare du Grau-du-Roi pour aller à l'aéroport de Montpellier ? Mon numéro : 06 12 34 56 78"></textarea>
     <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
-      <button type="button" class="btn ghost small" id="ia-btn" onclick="extraireIA()">✨ Extraire les infos</button>
+      <button type="button" class="btn ghost small" id="ia-btn" onclick="extraireIA()" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('sparkles', 15, 'var(--accent)') }}<span id="ia-btn-label">Extraire les infos</span></button>
     </div>
     {% else %}
     <p class="access-note" style="text-align:left;margin:.4rem 0 0">
@@ -154,9 +155,9 @@
                 placeholder="Infos complémentaires…">{{ crs.notes if crs and crs.notes else '' }}</textarea>
     </div>
 
-    <div style="display:flex;gap:.8rem;justify-content:flex-end;margin-top:.4rem">
-      <a href="{{ cancel_url }}" class="btn ghost">Annuler</a>
-      <button type="submit" class="btn primary">{{ submit_label }}</button>
+    <div style="display:flex;gap:.8rem;margin-top:.6rem;align-items:stretch">
+      <a href="{{ cancel_url }}" class="btn ghost" style="flex:0 0 auto">Annuler</a>
+      <button type="submit" class="btn primary" style="flex:1 1 auto;min-width:0;text-align:center;white-space:normal;line-height:1.2">{{ submit_label }}</button>
     </div>
   </form>
 </main>
@@ -169,6 +170,9 @@
   window.LIEUX = {{ lieux_json|tojson }};
   window.TARIFS = {{ tarifs_json|tojson }};
   window.VILLES = {{ villes_json|tojson }};
+  // Petites icônes SVG pour les puces/suggestions (mêmes tracés que le jeu global).
+  var SVG_HOME = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.18em"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>';
+  var SVG_PIN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.18em"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 </script>
 <script>
 function toast(m, err) {
@@ -265,7 +269,7 @@ function showLieux(field, q) {
   if (!items.length) { closeList(list); autoMatchTarif(); return; }
   list.innerHTML = items.map(function (it) {
     if (it.client) {
-      var t = it.label ? ('🏠 ' + esc(it.label)) : '📍';
+      var t = it.label ? (SVG_HOME + ' ' + esc(it.label)) : SVG_PIN;
       if (it.ville) t += ' · ' + esc(it.ville);
       return '<div class="tx-ac-item" data-client="1" data-adr="' + esc(it.adresse) +
         '" data-ville="' + esc(it.ville || '') + '">' +
@@ -368,7 +372,7 @@ async function extraireIA() {
   var msg = document.getElementById('ia-msg').value.trim();
   if (!msg) { toast('Colle d\'abord le message du client.', true); return; }
   var btn = document.getElementById('ia-btn');
-  btn.disabled = true; btn.textContent = '… extraction';
+  btn.disabled = true; document.getElementById('ia-btn-label').textContent = '… extraction';
   try {
     var r = await fetch('/api/extract', {
       method: 'POST', credentials: 'same-origin',
@@ -392,7 +396,7 @@ async function extraireIA() {
   } catch (e) {
     toast('Erreur : ' + e.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = '✨ Extraire les infos';
+    btn.disabled = false; document.getElementById('ia-btn-label').textContent = 'Extraire les infos';
   }
 }
 // Si le texte extrait correspond à un lieu connu, on relie le lieu (pour l'auto-tarif).
@@ -454,7 +458,7 @@ function renderClientAdr() {
     var box = document.getElementById('cli-adr-' + field);
     if (!box) return;
     box.innerHTML = adrs.map(function (a) {
-      var lbl = a.label ? ('🏠 ' + esc(a.label)) : ('📍 ' + esc(a.adresse));
+      var lbl = a.label ? (SVG_HOME + ' ' + esc(a.label)) : (SVG_PIN + ' ' + esc(a.adresse));
       if (a.ville) lbl += ' · ' + esc(a.ville);
       return '<button type="button" class="tx-chip" title="' + esc(a.adresse) +
         '" data-adr="' + esc(a.adresse) + '" data-ville="' + esc(a.ville || '') + '">' +

@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Villes desservies — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}villes{% endblock %}
 
@@ -22,7 +23,7 @@
 
     {% for v in villes %}
     <div class="fl-card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
-      <b>🏙️ {{ v.nom }}</b>
+      <b style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('building', 16, 'var(--accent)') }} {{ v.nom }}</b>
       <form method="post" action="{{ url_for('config.ville_supprimer', ville_id=v.id) }}"
             onsubmit="return confirm('Supprimer « {{ v.nom }} » ?')">
         <button type="submit" class="btn danger small">Supprimer</button>

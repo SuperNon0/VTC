@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Course — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}détail course{% endblock %}
 
@@ -6,7 +7,7 @@
 <main class="tx-main tx-form-wrap">
   <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <a href="{{ url_for('main.dashboard') }}" class="btn ghost small">← Retour au calendrier</a>
-    <a href="{{ url_for('main.course_modifier', course_id=c.id) }}" class="btn ghost small">✏️ Modifier</a>
+    <a href="{{ url_for('main.course_modifier', course_id=c.id) }}" class="btn ghost small" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('edit', 16) }} Modifier</a>
   </div>
 
   <article class="fl-card">
@@ -79,14 +80,14 @@
   {# ── Ajout au calendrier natif (iPhone .ics / Android Google Agenda) ── #}
   <section class="fl-card" style="margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
     <span class="access-text" style="text-align:left;margin:0">Ajouter cette course au calendrier de mon téléphone</span>
-    <button class="btn ghost small" onclick="addToCalendar({{ c.id }})">📅 Ajouter à mon agenda</button>
+    <button class="btn ghost small" onclick="addToCalendar({{ c.id }})" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('calendar', 16) }} Ajouter à mon agenda</button>
   </section>
 
   {# ── Suppression de la course ─────────────────────────────────────────── #}
   <section style="margin-top:1rem;text-align:right">
     <form method="post" action="{{ url_for('main.course_supprimer', course_id=c.id) }}"
           onsubmit="return confirm('Supprimer définitivement cette course ?');">
-      <button type="submit" class="btn danger small">🗑 Supprimer la course</button>
+      <button type="submit" class="btn danger small" style="display:inline-flex;align-items:center;gap:6px">{{ ic.icon('trash', 16) }} Supprimer la course</button>
     </form>
   </section>
 </main>

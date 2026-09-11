@@ -450,6 +450,16 @@ def creer_lieu(nom: str, adresse: str | None, ville_id: int | None = None) -> in
     return cur.lastrowid
 
 
+def maj_lieu(lieu_id: int, nom: str, adresse: str | None,
+             ville_id: int | None = None) -> None:
+    db = get_db()
+    db.execute(
+        "UPDATE lieux SET nom = ?, adresse = ?, ville_id = ? WHERE id = ?",
+        (nom, adresse, ville_id, lieu_id),
+    )
+    db.commit()
+
+
 def supprimer_lieu(lieu_id: int) -> None:
     db = get_db()
     db.execute("DELETE FROM lieux WHERE id = ?", (lieu_id,))

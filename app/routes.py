@@ -239,7 +239,7 @@ def course_modifier(course_id: int):
         edit=True, crs=course,
         form_action=url_for("main.course_modifier_save", course_id=course_id),
         cancel_url=url_for("main.course_detail", course_id=course_id),
-        submit_label="Enregistrer les modifications",
+        submit_label="Enregistrer",
         date_val=date_val, heure_val=heure_val,
         sel_tarif=sel_tarif, prix_libre_val=prix_libre_val,
         sel_conducteur=course["conducteur_id"],
@@ -880,6 +880,20 @@ def lieu_ajouter():
         return redirect(url_for("config.lieux"))
     C.creer_lieu(nom, adresse, ville_id)
     flash("Lieu ajouté ✓", "success")
+    return redirect(url_for("config.lieux"))
+
+
+@config_bp.route("/reglages/lieux/<int:lieu_id>/modifier", methods=["POST"])
+@login_required
+def lieu_modifier(lieu_id: int):
+    nom = (request.form.get("nom") or "").strip()
+    adresse = (request.form.get("adresse") or "").strip() or None
+    ville_id = _int_or_none(request.form.get("ville_id"))
+    if not nom:
+        flash("Le nom du lieu est requis.", "error")
+        return redirect(url_for("config.lieux"))
+    C.maj_lieu(lieu_id, nom, adresse, ville_id)
+    flash("Lieu mis à jour ✓", "success")
     return redirect(url_for("config.lieux"))
 
 
