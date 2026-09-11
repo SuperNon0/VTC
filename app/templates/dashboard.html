@@ -219,13 +219,13 @@ async function activerPush() {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function key(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function parDate(){
+    // Regroupé par la DATE serveur (c.d), comme la vue liste — pas de fuseau JS.
     var m = {};
     (window.CAL||[]).forEach(function(c){
-      if(!c.ts) return; var d=new Date(c.ts*1000); (m[key(d)]=m[key(d)]||[]).push(c);
+      if(!c.d) return; (m[c.d]=m[c.d]||[]).push(c);
     });
     return m;
   }
-  function hhmm(ts){ var d=new Date(ts*1000); return pad(d.getHours())+'h'+pad(d.getMinutes()); }
   function lienJour(k){ return '?vue=liste&f='+encodeURIComponent(F)+'&j=jour&du='+k; }
 
   function renderMois() {
@@ -266,7 +266,7 @@ async function activerPush() {
       if(!list.length) h+='<div class="cal-empty">—</div>';
       list.forEach(function(c){
         h+='<a class="cal-course st-'+c.statut+'" href="/course/'+c.id+'">'
-         + '<b>'+hhmm(c.ts)+'</b> '+esc(c.client||'Client')
+         + '<b>'+esc(c.t)+'</b> '+esc(c.client||'Client')
          + '<span class="cal-tr">'+esc(c.depart)+' → '+esc(c.arrivee)+(c.prix!=null?' · '+c.prix.toFixed(2)+' €':'')+'</span></a>';
       });
       h+='</div>';

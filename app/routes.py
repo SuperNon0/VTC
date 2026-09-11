@@ -190,8 +190,14 @@ def dashboard():
     cal_json = []
     if vue != "liste":
         for r in C.courses_assignees(compte["id"], statuts=statuts, order="ASC"):
+            # Date ET heure formatées CÔTÉ SERVEUR (comme la vue liste), pour
+            # éviter tout décalage de fuseau horaire dans le calendrier JS.
+            q = r["quand"] or 0
+            d = datetime.fromtimestamp(q) if q else None
             cal_json.append({
-                "id": r["id"], "ts": r["quand"] or 0,
+                "id": r["id"], "ts": q,
+                "d": d.strftime("%Y-%m-%d") if d else "",
+                "t": (f"{d.hour:02d}h{d.minute:02d}") if d else "",
                 "client": r["client_nom"] or "",
                 "depart": r["depart"] or "", "arrivee": r["arrivee"] or "",
                 "prix": r["prix"], "statut": r["statut"],
