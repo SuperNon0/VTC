@@ -394,6 +394,10 @@ body.has-bottomnav {
 /* Feuille d'actions « adresse » (bottom sheet) */
 .adr-sheet { position: fixed; inset: 0; z-index: 200; display: flex;
              align-items: flex-end; }
+/* IMPORTANT : `display:flex` ci-dessus écrase le `[hidden]` du navigateur.
+   Sans cette règle, l'overlay invisible reste au-dessus de tout l'écran et
+   bloque TOUS les clics. On force donc le masquage à l'état caché. */
+.adr-sheet[hidden] { display: none !important; }
 .adr-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.5);
                       opacity: 0; transition: opacity .2s; }
 .adr-sheet.open .adr-sheet-backdrop { opacity: 1; }
