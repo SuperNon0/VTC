@@ -2,6 +2,11 @@
    10. Application taxi/VTC — ajouts (n'utilisent QUE les variables :root).
    ═════════════════════════════════════════════════════════════════════════ */
 
+/* Un élément avec l'attribut `hidden` DOIT rester masqué, même s'il porte un
+   `style="display:flex"` en ligne (sinon les formulaires de modif « repliés »
+   restent ouverts). `!important` bat le style en ligne. */
+[hidden] { display: none !important; }
+
 /* --- Navigation applicative sous la topbar ------------------------------- */
 .appnav {
   display: flex;
