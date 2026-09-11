@@ -5,8 +5,16 @@
 {% block app_content %}
 <main class="tx-main">
   <div class="tx-head">
-    <h2 class="fl-title-serif" style="font-size:1.5rem">Mes courses à venir</h2>
+    <h2 class="fl-title-serif" style="font-size:1.5rem">Mes courses</h2>
     <a href="{{ url_for('main.nouvelle_course') }}" class="btn primary small">+ Nouvelle course</a>
+  </div>
+
+  {# Filtres par statut #}
+  <div class="tx-filtres">
+    {% for key, lbl, _st, _o in filtres %}
+    <a class="tx-chip{% if key == filtre_actif %} on{% endif %}"
+       href="{{ url_for('main.dashboard', f=key) }}">{{ lbl }}</a>
+    {% endfor %}
   </div>
 
   {% if push_available and not deja_abonne %}
@@ -25,8 +33,8 @@
 
   {% if not groupes %}
   <div class="fl-card" style="text-align:center;color:var(--muted)">
-    <p style="margin:0">Aucune course à venir pour l'instant.</p>
-    <p class="access-note" style="margin:.4rem 0 0">Crée-en une avec « + Nouvelle course ».</p>
+    <p style="margin:0">Aucune course pour ce filtre.</p>
+    <p class="access-note" style="margin:.4rem 0 0">Change de filtre, ou crée une course avec « + Nouvelle course ».</p>
   </div>
   {% endif %}
 

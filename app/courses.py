@@ -111,29 +111,61 @@ def update_course(course_id: int, data: dict) -> None:
     db.commit()
 
 
-def courses_assignees(conducteur_id: int, a_venir: bool = False) -> list:
-    """Courses assignées à un conducteur (base du calendrier personnel, §6.6)."""
+def promouvoir_courses_dues() -> None:
+    """Passe automatiquement en « en cours » les courses « à faire » dont l'heure
+    est arrivée (quand <= maintenant). Appelé à l'affichage des listes : pas de
+    tâche de fond nécessaire. Le passage en « terminée » reste manuel (§5)."""
+    now = int(time.time())
     db = get_db()
-    if a_venir:
-        return db.execute(
-            "SELECT * FROM courses WHERE conducteur_id = ? AND statut != 'annulee' "
-            "AND quand >= ? ORDER BY quand ASC",
-            (conducteur_id, int(time.time()) - 3600),
-        ).fetchall()
-    return db.execute(
-        "SELECT * FROM courses WHERE conducteur_id = ? ORDER BY quand DESC",
-        (conducteur_id,),
+    db.execute(
+        "UPDATE courses SET statut = 'en_cours', maj = ? "
+        "WHERE statut = 'a_faire' AND quand IS NOT NULL AND quand <= ?",
+        (now, now),
+    )
+    db.commit()
+
+
+def _clause_statuts(statuts):
+    """(fragment SQL, params) pour filtrer par un ensemble de statuts, ou ('', [])."""
+    statuts = [s for s in (statuts or []) if s in STATUTS]
+    if not statuts:
+        return "", []
+    return " AND statut IN (%s)" % ",".join("?" * len(statuts)), statuts
+
+
+def courses_assignees(conducteur_id: int, statuts=None, order: str = "ASC") -> list:
+    """Courses assignées à un conducteur (calendrier personnel §6.6).
+
+    `statuts` = ensemble de statuts à garder (None = tous). Les courses passées
+    ne sont PLUS masquées : elles restent tant qu'elles ne sont pas « terminée ».
+    """
+    frag, params = _clause_statuts(statuts)
+    sens = "DESC" if str(order).upper() == "DESC" else "ASC"
+    return get_db().execute(
+        "SELECT * FROM courses WHERE conducteur_id = ?" + frag
+        + " ORDER BY quand " + sens,
+        [conducteur_id, *params],
     ).fetchall()
 
 
-def courses_creees(createur_id: int) -> list:
-    """Toutes les courses saisies par un créateur, quel que soit l'assigné (§5)."""
+def courses_creees(createur_id: int, statuts=None, conducteur_id: int | None = None,
+                   tri: str = "quand", order: str = "DESC") -> list:
+    """Courses saisies par un créateur (§5), avec filtres statut / conducteur et
+    tri par date-heure de course (`quand`) ou par date d'ajout (`cree`)."""
+    frag, params = _clause_statuts(statuts)
+    args = [createur_id, *params]
+    if conducteur_id:
+        frag += " AND c.conducteur_id = ?"
+        args.append(conducteur_id)
+    col = "c.cree" if tri == "cree" else "c.quand"
+    sens = "ASC" if str(order).upper() == "ASC" else "DESC"
     return get_db().execute(
         "SELECT c.*, COALESCE(p.nom, u.email) AS conducteur_email "
         "FROM courses c LEFT JOIN comptes u ON u.id = c.conducteur_id "
         "LEFT JOIN vtc_profils p ON p.compte_id = u.id "
-        "WHERE c.createur_id = ? ORDER BY c.quand DESC",
-        (createur_id,),
+        "WHERE c.createur_id = ?" + frag
+        + f" ORDER BY {col} {sens}",
+        args,
     ).fetchall()
 
 

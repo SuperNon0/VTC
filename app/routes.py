@@ -91,19 +91,47 @@ def _grouper_par_jour(rows) -> list:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Filtres de statut (accueil + page Courses)
+# ─────────────────────────────────────────────────────────────────────────────
+# (clé, libellé, statuts gardés | None = tous, ordre)
+FILTRES_STATUT = [
+    ("actives",  "À traiter",  ["a_faire", "en_cours"], "ASC"),
+    ("en_cours", "En cours",   ["en_cours"],            "ASC"),
+    ("a_faire",  "À faire",    ["a_faire"],             "ASC"),
+    ("terminee", "Terminées",  ["terminee"],            "DESC"),
+    ("annulee",  "Annulées",   ["annulee"],             "DESC"),
+    ("toutes",   "Toutes",     None,                    "DESC"),
+]
+_FILTRES_MAP = {k: (lbl, st, order) for k, lbl, st, order in FILTRES_STATUT}
+
+
+def _resoudre_filtre(defaut: str = "actives"):
+    """(clé, statuts, ordre) à partir du paramètre ?f=… (repli sur `defaut`)."""
+    key = (request.args.get("f") or defaut)
+    if key not in _FILTRES_MAP:
+        key = defaut
+    _lbl, statuts, order = _FILTRES_MAP[key]
+    return key, statuts, order
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Calendrier personnel (dashboard / accueil) — cahier §6.6
 # ─────────────────────────────────────────────────────────────────────────────
 @main_bp.route("/")
 @login_required
 def dashboard():
     compte = current_compte()
-    rows = C.courses_assignees(compte["id"], a_venir=True)
+    C.promouvoir_courses_dues()   # « à faire » dont l'heure est passée → « en cours »
+    filtre, statuts, order = _resoudre_filtre("actives")
+    rows = C.courses_assignees(compte["id"], statuts=statuts, order=order)
     return render_template(
         "dashboard.html",
         compte=compte,
         is_super_admin=is_super_admin(),
         groupes=_grouper_par_jour(rows),
         total=len(rows),
+        filtres=FILTRES_STATUT,
+        filtre_actif=filtre,
         push_available=webpush.is_available(),
         deja_abonne=webpush.compte_a_des_souscriptions(compte["id"]),
     )
@@ -366,10 +394,17 @@ def plus():
 @login_required
 def mes_courses():
     compte = current_compte()
-    rows = [_course_view(r) for r in C.courses_creees(compte["id"])]
+    C.promouvoir_courses_dues()
+    filtre, statuts, _order = _resoudre_filtre("toutes")
+    cond = _int_or_none(request.args.get("cond"))
+    tri = "cree" if (request.args.get("tri") == "cree") else "quand"
+    rows = [_course_view(r) for r in C.courses_creees(
+        compte["id"], statuts=statuts, conducteur_id=cond, tri=tri, order="DESC")]
     return render_template(
         "mes_courses.html", compte=compte,
         is_super_admin=is_super_admin(), courses=rows,
+        filtres=FILTRES_STATUT, filtre_actif=filtre,
+        conducteurs=C.conducteurs_actifs(), cond_actif=cond, tri_actif=tri,
     )
 
 

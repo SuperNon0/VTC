@@ -5,13 +5,37 @@
 {% block app_content %}
 <main class="tx-main">
   <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.4rem">Courses que j'ai créées</h2>
-  <p class="access-note" style="text-align:left;margin:0 0 1rem">
+  <p class="access-note" style="text-align:left;margin:0 0 .8rem">
     Toutes les courses que tu as saisies, quel que soit le conducteur assigné.
   </p>
 
+  {# Filtres par statut #}
+  <div class="tx-filtres">
+    {% for key, lbl, _st, _o in filtres %}
+    <a class="tx-chip{% if key == filtre_actif %} on{% endif %}"
+       href="{{ url_for('main.mes_courses', f=key, cond=cond_actif or none, tri=tri_actif) }}">{{ lbl }}</a>
+    {% endfor %}
+  </div>
+
+  {# Filtres avancés : par conducteur + tri #}
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.2rem 0 1rem">
+    <select class="tx-input" style="flex:1;min-width:150px"
+            onchange="location.href='{{ url_for('main.mes_courses', f=filtre_actif, tri=tri_actif) }}' + (this.value ? '&cond=' + this.value : '')">
+      <option value="">Tous les conducteurs</option>
+      {% for cd in conducteurs %}
+      <option value="{{ cd.id }}" {{ 'selected' if cond_actif == cd.id else '' }}>{{ nom_compte(cd) }}</option>
+      {% endfor %}
+    </select>
+    <select class="tx-input" style="flex:1;min-width:150px"
+            onchange="location.href='{{ url_for('main.mes_courses', f=filtre_actif, cond=cond_actif or none) }}' + '&tri=' + this.value">
+      <option value="quand" {{ 'selected' if tri_actif == 'quand' else '' }}>Trier par date de course</option>
+      <option value="cree" {{ 'selected' if tri_actif == 'cree' else '' }}>Trier par date d'ajout</option>
+    </select>
+  </div>
+
   {% if not courses %}
   <div class="fl-card" style="text-align:center;color:var(--muted)">
-    <p style="margin:0">Tu n'as encore créé aucune course.</p>
+    <p style="margin:0">Aucune course pour ces filtres.</p>
   </div>
   {% endif %}
 
