@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tarifs (
     lieu_arrivee_id INTEGER,
     ville_depart_id  INTEGER,
     ville_arrivee_id INTEGER,
+    bidirectionnel  INTEGER NOT NULL DEFAULT 0,   -- 1 = tarif valable dans les deux sens
     ordre           INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (lieu_depart_id)  REFERENCES lieux(id) ON DELETE SET NULL,
     FOREIGN KEY (lieu_arrivee_id) REFERENCES lieux(id) ON DELETE SET NULL,

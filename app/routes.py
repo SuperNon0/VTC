@@ -200,7 +200,8 @@ def nouvelle_course():
                      "ville_id": l["ville_id"]} for l in lieux],
         tarifs_json=[{"id": t["id"], "prix": t["prix"],
                       "dep_lieu": t["lieu_depart_id"], "dep_ville": t["ville_depart_id"],
-                      "arr_lieu": t["lieu_arrivee_id"], "arr_ville": t["ville_arrivee_id"]}
+                      "arr_lieu": t["lieu_arrivee_id"], "arr_ville": t["ville_arrivee_id"],
+                      "bidir": bool(t["bidirectionnel"])}
                      for t in tarifs],
         ai_on=ai_configured(),
     )
@@ -598,7 +599,8 @@ def tarif_ajouter():
         flash("Choisis au moins un départ ou une arrivée (lieu ou ville) et un "
               "prix valide.", "error")
         return redirect(url_for("config.tarifs"))
-    C.creer_tarif(prix, dep_lieu, dep_ville, arr_lieu, arr_ville)
+    bidir = bool(request.form.get("bidir"))
+    C.creer_tarif(prix, dep_lieu, dep_ville, arr_lieu, arr_ville, bidir=bidir)
     flash("Grille tarifaire ajoutée ✓", "success")
     return redirect(url_for("config.tarifs"))
 
@@ -613,7 +615,8 @@ def tarif_modifier(tarif_id: int):
         flash("Choisis au moins un départ ou une arrivée (lieu ou ville) et un "
               "prix valide.", "error")
         return redirect(url_for("config.tarifs"))
-    C.maj_tarif(tarif_id, prix, dep_lieu, dep_ville, arr_lieu, arr_ville)
+    bidir = bool(request.form.get("bidir"))
+    C.maj_tarif(tarif_id, prix, dep_lieu, dep_ville, arr_lieu, arr_ville, bidir=bidir)
     flash("Grille tarifaire mise à jour ✓", "success")
     return redirect(url_for("config.tarifs"))
 

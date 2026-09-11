@@ -294,28 +294,32 @@ def liste_tarifs() -> list:
 
 
 def creer_tarif(prix: float, dep_lieu=None, dep_ville=None,
-                arr_lieu=None, arr_ville=None) -> int:
+                arr_lieu=None, arr_ville=None, bidir: bool = False) -> int:
     db = get_db()
     ordre = (db.execute("SELECT COALESCE(MAX(ordre), 0) + 1 FROM tarifs")
              .fetchone()[0])
     libelle = _libelle_tarif(dep_lieu, dep_ville, arr_lieu, arr_ville)
     cur = db.execute(
         "INSERT INTO tarifs (libelle, prix, lieu_depart_id, lieu_arrivee_id, "
-        "ville_depart_id, ville_arrivee_id, ordre) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville, ordre),
+        "ville_depart_id, ville_arrivee_id, bidirectionnel, ordre) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville,
+         1 if bidir else 0, ordre),
     )
     db.commit()
     return cur.lastrowid
 
 
 def maj_tarif(tarif_id: int, prix: float, dep_lieu=None, dep_ville=None,
-              arr_lieu=None, arr_ville=None) -> None:
+              arr_lieu=None, arr_ville=None, bidir: bool = False) -> None:
     db = get_db()
     libelle = _libelle_tarif(dep_lieu, dep_ville, arr_lieu, arr_ville)
     db.execute(
         "UPDATE tarifs SET libelle = ?, prix = ?, lieu_depart_id = ?, "
-        "lieu_arrivee_id = ?, ville_depart_id = ?, ville_arrivee_id = ? WHERE id = ?",
-        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville, tarif_id),
+        "lieu_arrivee_id = ?, ville_depart_id = ?, ville_arrivee_id = ?, "
+        "bidirectionnel = ? WHERE id = ?",
+        (libelle, prix, dep_lieu, arr_lieu, dep_ville, arr_ville,
+         1 if bidir else 0, tarif_id),
     )
     db.commit()
 
@@ -343,6 +347,8 @@ def ensure_schema() -> None:
         for col in ("ville_depart_id", "ville_arrivee_id"):
             if col not in tcols:
                 db.execute(f"ALTER TABLE tarifs ADD COLUMN {col} INTEGER")
+        if "bidirectionnel" not in tcols:
+            db.execute("ALTER TABLE tarifs ADD COLUMN bidirectionnel INTEGER NOT NULL DEFAULT 0")
         db.commit()
 
 

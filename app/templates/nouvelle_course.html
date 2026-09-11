@@ -282,12 +282,17 @@ function autoMatchTarif() {
     if (tv != null && fv != null && tv === fv) return 1;
     return -1;
   }
+  // Score d'un tarif dans un sens donné (départ du tarif ↔ dL/dV, arrivée ↔ aL/aV).
+  function paire(t, dL2, dV2, aL2, aV2) {
+    var sd = side(t.dep_lieu, t.dep_ville, dL2, dV2);
+    var sa = side(t.arr_lieu, t.arr_ville, aL2, aV2);
+    return (sd < 0 || sa < 0) ? -1 : sd + sa;
+  }
   var best = null, bestScore = 0;
   (window.TARIFS || []).forEach(function (t) {
-    var sd = side(t.dep_lieu, t.dep_ville, depL, depV);
-    var sa = side(t.arr_lieu, t.arr_ville, arrL, arrV);
-    if (sd < 0 || sa < 0) return;
-    var score = sd + sa;
+    var score = paire(t, depL, depV, arrL, arrV);
+    // Tarif « deux sens » : on essaie aussi le trajet inversé (retour).
+    if (t.bidir) score = Math.max(score, paire(t, arrL, arrV, depL, depV));
     if (score > bestScore) { bestScore = score; best = t; }
   });
   if (best && bestScore > 0) {
