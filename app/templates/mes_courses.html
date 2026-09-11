@@ -23,12 +23,12 @@
     </div>
     <div class="tx-client">
       {% if c.client_nom %}<b>{{ c.client_nom }}</b>{% else %}<b class="tx-muted">Client non précisé</b>{% endif %}
-      {% if c.client_tel %}<span class="tx-tel">{{ c.client_tel }}</span>{% endif %}
+      {% if c.client_tel %}<span class="tx-tel tx-phone" data-tel="{{ tel_digits(c.client_tel) }}">{{ format_tel(c.client_tel) }}</span>{% endif %}
     </div>
     <div class="tx-trajet">
-      <span class="tx-pt">{{ c.depart or '—' }}</span>
+      <span class="tx-pt{% if c.depart %} tx-adr{% endif %}"{% if c.depart %} data-adr="{{ c.depart }}"{% endif %}>{{ c.depart or '—' }}</span>
       <span class="tx-arrow">→</span>
-      <span class="tx-pt">{{ c.arrivee or '—' }}</span>
+      <span class="tx-pt{% if c.arrivee %} tx-adr{% endif %}"{% if c.arrivee %} data-adr="{{ c.arrivee }}"{% endif %}>{{ c.arrivee or '—' }}</span>
     </div>
     <div class="tx-course-foot">
       {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% else %}<span></span>{% endif %}

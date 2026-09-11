@@ -2,11 +2,45 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from urllib.parse import quote_plus
 
 _MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
          "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Téléphone : normalisation + affichage (toujours espacé « 06 12 34 56 78 »)
+# ─────────────────────────────────────────────────────────────────────────────
+def tel_digits(raw: str | None) -> str:
+    """Ne garde que les chiffres (pour un lien tel:), en préservant un + initial."""
+    raw = (raw or "").strip()
+    plus = raw.startswith("+")
+    d = re.sub(r"\D", "", raw)
+    return ("+" + d) if plus else d
+
+
+def format_tel(raw: str | None) -> str:
+    """Affiche un numéro FR toujours groupé par deux : « 06 12 34 56 78 ».
+
+    Gère les formes +33 / 0033. Si le format est inattendu, groupe par deux au
+    mieux sans jamais perdre de chiffres.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    d = re.sub(r"\D", "", raw)
+    # +33 6 … ou 0033 6 … → 0X …
+    if d.startswith("0033"):
+        d = "0" + d[4:]
+    elif d.startswith("33") and len(d) == 11:
+        d = "0" + d[2:]
+    if len(d) == 10:  # numéro français standard
+        return " ".join(d[i:i + 2] for i in range(0, 10, 2))
+    if not d:
+        return raw
+    return " ".join(d[i:i + 2] for i in range(0, len(d), 2))
 
 
 def fmt_dt(ts: int | None, with_time: bool = True) -> str:

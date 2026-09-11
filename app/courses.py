@@ -204,6 +204,21 @@ def chercher_clients(q: str, limit: int = 8) -> list:
     return out
 
 
+def client_par_tel(telephone: str | None, exclude_id: int | None = None):
+    """Renvoie le client existant ayant ce numéro (comparé sur les seuls chiffres),
+    ou None. Sert à repérer les doublons de téléphone."""
+    d = "".join(ch for ch in (telephone or "") if ch.isdigit())
+    if not d:
+        return None
+    for r in get_db().execute("SELECT * FROM clients").fetchall():
+        if exclude_id and r["id"] == exclude_id:
+            continue
+        rd = "".join(ch for ch in (r["telephone"] or "") if ch.isdigit())
+        if rd and rd == d:
+            return r
+    return None
+
+
 def creer_client(nom: str, telephone: str | None, adresses: list | None,
                  notes: str | None) -> int:
     db = get_db()

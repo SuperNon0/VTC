@@ -72,6 +72,20 @@
     </a>
   </nav>
 
+  {# ── Feuille d'actions « adresse » (Waze / Maps / Copier) — globale ─────── #}
+  <div class="adr-sheet" id="adr-sheet" hidden>
+    <div class="adr-sheet-backdrop" onclick="closeAdrSheet()"></div>
+    <div class="adr-sheet-panel">
+      <div class="adr-sheet-adr" id="adr-sheet-adr"></div>
+      <a class="adr-sheet-btn" id="adr-waze" target="_blank" rel="noopener">Ouvrir dans Waze</a>
+      <a class="adr-sheet-btn" id="adr-gmaps" target="_blank" rel="noopener">Ouvrir dans Google Maps</a>
+      <a class="adr-sheet-btn" id="adr-apple" target="_blank" rel="noopener">Ouvrir dans Plans</a>
+      <button class="adr-sheet-btn" id="adr-copy" type="button">Copier l'adresse</button>
+      <button class="adr-sheet-btn adr-sheet-cancel" type="button" onclick="closeAdrSheet()">Annuler</button>
+    </div>
+  </div>
+  <div class="adr-toast" id="adr-toast"></div>
+
   <script>
     // Enregistrement du service worker (PWA + Web Push, cahier §7).
     if ('serviceWorker' in navigator) {
@@ -79,6 +93,51 @@
         console.warn('SW non enregistré', e);
       });
     }
+
+    // ── Adresses cliquables : ouvre Waze/Google/Plans ou copie ───────────────
+    function adrToast(m) {
+      var t = document.getElementById('adr-toast');
+      if (!t) return;
+      t.textContent = m; t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 1800);
+    }
+    function openAdrSheet(adr) {
+      adr = (adr || '').trim(); if (!adr) return;
+      var enc = encodeURIComponent(adr);
+      document.getElementById('adr-sheet-adr').textContent = adr;
+      document.getElementById('adr-waze').href = 'https://waze.com/ul?q=' + enc + '&navigate=yes';
+      document.getElementById('adr-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + enc;
+      document.getElementById('adr-apple').href = 'https://maps.apple.com/?q=' + enc;
+      document.getElementById('adr-copy').onclick = function () { copyAdr(adr); };
+      var s = document.getElementById('adr-sheet');
+      s.hidden = false;
+      requestAnimationFrame(function () { s.classList.add('open'); });
+    }
+    function closeAdrSheet() {
+      var s = document.getElementById('adr-sheet');
+      s.classList.remove('open');
+      setTimeout(function () { s.hidden = true; }, 200);
+    }
+    function copyAdr(t) {
+      var done = function () { adrToast('Adresse copiée'); closeAdrSheet(); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t).then(done, function () { fallbackCopy(t); done(); });
+      } else { fallbackCopy(t); done(); }
+    }
+    function fallbackCopy(t) {
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+    // Délégation globale : adresses (.tx-adr) et téléphones (.tx-phone).
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('.tx-adr');
+      if (a) { e.preventDefault(); e.stopPropagation(); openAdrSheet(a.dataset.adr || a.textContent); return; }
+      var p = e.target.closest('.tx-phone');
+      if (p && p.dataset.tel) { e.preventDefault(); e.stopPropagation(); window.location.href = 'tel:' + p.dataset.tel; }
+    });
   </script>
   {% endif %}
 

@@ -49,7 +49,7 @@
   {% for c in clients %}
   <details class="fl-card" style="margin-bottom:8px">
     <summary style="cursor:pointer">
-      <b>{{ c.nom }}</b>{% if c.telephone %} <span class="tx-muted">· {{ c.telephone }}</span>{% endif %}
+      <b>{{ c.nom }}</b>{% if c.telephone %} <span class="tx-muted">· {{ format_tel(c.telephone) }}</span>{% endif %}
       {% if c.adresses_list %}<span class="tx-muted"> · {{ c.adresses_list|length }} adresse{{ 's' if c.adresses_list|length > 1 else '' }}</span>{% endif %}
     </summary>
     <form method="post" action="{{ url_for('config.client_modifier', client_id=c.id) }}"

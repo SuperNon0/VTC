@@ -385,3 +385,39 @@ body.has-bottomnav {
 .icon-btn .ic { display: block; }
 /* Les icônes SVG s'alignent proprement dans le texte et les boutons. */
 .ic { display: inline-block; vertical-align: -0.18em; }
+
+/* ─── Adresses & téléphones cliquables ───────────────────────────────────── */
+.tx-adr { color: var(--accent); text-decoration: underline dotted;
+          text-underline-offset: 2px; cursor: pointer; }
+.tx-phone { color: var(--accent-2); cursor: pointer; }
+
+/* Feuille d'actions « adresse » (bottom sheet) */
+.adr-sheet { position: fixed; inset: 0; z-index: 200; display: flex;
+             align-items: flex-end; }
+.adr-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.5);
+                      opacity: 0; transition: opacity .2s; }
+.adr-sheet.open .adr-sheet-backdrop { opacity: 1; }
+.adr-sheet-panel { position: relative; width: 100%; background: var(--card);
+                   border-top-left-radius: 18px; border-top-right-radius: 18px;
+                   border-top: 1px solid var(--border);
+                   padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+                   display: flex; flex-direction: column; gap: 8px;
+                   transform: translateY(100%); transition: transform .22s ease;
+                   box-shadow: 0 -10px 40px rgba(0,0,0,.45); }
+.adr-sheet.open .adr-sheet-panel { transform: translateY(0); }
+.adr-sheet-adr { font-family: var(--font-mono); font-size: .8rem; color: var(--muted);
+                 text-align: center; padding: 6px 4px 10px; word-break: break-word; }
+.adr-sheet-btn { display: block; width: 100%; text-align: center; cursor: pointer;
+                 background: var(--surface); border: 1px solid var(--border);
+                 border-radius: var(--radius-md); color: var(--text);
+                 font-family: var(--font-mono); font-size: .9rem; padding: .8rem 1rem; }
+.adr-sheet-btn:hover { border-color: var(--accent); color: var(--accent); }
+.adr-sheet-cancel { background: transparent; color: var(--muted); margin-top: 4px; }
+
+/* Petit toast global (copie d'adresse) */
+.adr-toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom));
+             transform: translateX(-50%) translateY(1rem); z-index: 300;
+             background: var(--accent); color: #0e0f11; font-size: .8rem;
+             padding: .5rem 1.1rem; border-radius: 20px; opacity: 0;
+             pointer-events: none; transition: .22s; }
+.adr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

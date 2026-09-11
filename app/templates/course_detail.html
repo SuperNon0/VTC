@@ -29,13 +29,13 @@
 
     <div class="tx-detail-grid">
       <div class="fl-label">Téléphone</div>
-      <div>{% if c.client_tel %}<a href="tel:{{ c.client_tel }}" class="tx-tel">{{ c.client_tel }}</a>{% else %}<span class="tx-muted">—</span>{% endif %}</div>
+      <div>{% if c.client_tel %}<a href="tel:{{ tel_digits(c.client_tel) }}" class="tx-tel">{{ format_tel(c.client_tel) }}</a>{% else %}<span class="tx-muted">—</span>{% endif %}</div>
 
       <div class="fl-label">Prise en charge</div>
-      <div>{{ c.depart or '—' }}</div>
+      <div>{% if c.depart %}<span class="tx-adr" data-adr="{{ c.depart }}">{{ c.depart }}</span>{% else %}—{% endif %}</div>
 
       <div class="fl-label">Dépose</div>
-      <div>{{ c.arrivee or '—' }}</div>
+      <div>{% if c.arrivee %}<span class="tx-adr" data-adr="{{ c.arrivee }}">{{ c.arrivee }}</span>{% else %}—{% endif %}</div>
 
       <div class="fl-label">Prix</div>
       <div>{% if c.prix is not none %}<b class="tx-prix" style="font-size:1rem">{{ '%.2f'|format(c.prix) }} €</b>{% else %}<span class="tx-muted">—</span>{% endif %}</div>

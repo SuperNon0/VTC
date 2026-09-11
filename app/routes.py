@@ -38,9 +38,9 @@ from .ai import is_configured as ai_configured
 from .helpers import (CAL_PLACEHOLDERS, DEFAULT_CAL_NOTES, DEFAULT_CAL_TITLE,
                       NOTIF_PLACEHOLDERS, DEFAULT_NOTIF_BODY,
                       DEFAULT_NOTIF_TITLE, cal_notes_template,
-                      cal_title_template, course_ics, fmt_dt,
+                      cal_title_template, course_ics, fmt_dt, format_tel,
                       google_calendar_url, label_compte, notif_body_template,
-                      notif_corps, notif_title_template, notif_titre)
+                      notif_corps, notif_title_template, notif_titre, tel_digits)
 
 # Blueprint « écrans » : sert aussi les assets métier (app.css, sw.js, icônes,
 # manifest) sous /app/ — indépendant du /static de la base.
@@ -63,6 +63,9 @@ def _inject_app_globals():
         "is_super_admin": is_super_admin(),
         # Nom lisible d'un compte dans les templates (nom d'affichage → e-mail).
         "nom_compte": label_compte,
+        # Téléphone : affichage toujours espacé + chiffres pour un lien tel:.
+        "format_tel": format_tel,
+        "tel_digits": tel_digits,
     }
 
 
@@ -927,7 +930,14 @@ def client_ajouter():
     if not nom:
         flash("Le nom du client est requis.", "error")
         return redirect(url_for("config.clients"))
-    tel = (request.form.get("telephone") or "").strip() or None
+    tel = format_tel(request.form.get("telephone")) or None
+    # Vérifie qu'aucun client n'a déjà ce numéro (évite les doublons).
+    if tel:
+        dup = C.client_par_tel(tel)
+        if dup:
+            flash(f"Ce numéro est déjà enregistré pour « {dup['nom']} ». "
+                  "Client non créé (modifie plutôt la fiche existante).", "error")
+            return redirect(url_for("config.clients"))
     adresses = _parse_adresses(request.form)
     notes = (request.form.get("notes") or "").strip() or None
     C.creer_client(nom, tel, adresses, notes)
@@ -942,7 +952,13 @@ def client_modifier(client_id: int):
     if not nom:
         flash("Le nom du client est requis.", "error")
         return redirect(url_for("config.clients"))
-    tel = (request.form.get("telephone") or "").strip() or None
+    tel = format_tel(request.form.get("telephone")) or None
+    if tel:
+        dup = C.client_par_tel(tel, exclude_id=client_id)
+        if dup:
+            flash(f"Ce numéro est déjà enregistré pour « {dup['nom']} ». "
+                  "Modification non enregistrée.", "error")
+            return redirect(url_for("config.clients"))
     adresses = _parse_adresses(request.form)
     notes = (request.form.get("notes") or "").strip() or None
     C.maj_client(client_id, nom, tel, adresses, notes)
