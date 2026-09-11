@@ -98,9 +98,8 @@ def _grouper_par_jour(rows) -> list:
 # ─────────────────────────────────────────────────────────────────────────────
 # (clé, libellé, statuts gardés | None = tous, ordre)
 FILTRES_STATUT = [
-    ("actives",  "À traiter",  ["a_faire", "en_cours"], "ASC"),
+    ("actives",  "À faire",    ["a_faire", "en_cours"], "ASC"),   # défaut
     ("en_cours", "En cours",   ["en_cours"],            "ASC"),
-    ("a_faire",  "À faire",    ["a_faire"],             "ASC"),
     ("terminee", "Terminées",  ["terminee"],            "DESC"),
     ("annulee",  "Annulées",   ["annulee"],             "DESC"),
     ("toutes",   "Toutes",     None,                    "DESC"),
