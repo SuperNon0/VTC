@@ -262,13 +262,24 @@
 /* ═════════════════════════════════════════════════════════════════════════
    11. Barre de navigation en bas (mobile-first) + menu « Plus ».
    ═════════════════════════════════════════════════════════════════════════ */
-/* La page occupe toujours au moins tout l'écran : sur une page courte (rien à
-   défiler), le fond ne s'arrête pas au-dessus de la barre — évite toute bande
-   sombre résiduelle en bas. 100dvh = hauteur d'écran « dynamique » (iOS). */
+/* Recette reprise d'un projet éprouvé (bibliothèque de films) où la barre du
+   bas ne bug jamais. Deux points essentiels par rapport aux essais précédents :
+
+   1) La base pose `overflow-x: hidden` sur html/body. Sur iOS, un overflow
+      (autre que visible) sur la RACINE fait « décrocher » les éléments
+      position:fixed pendant le défilement (la barre reste coincée au milieu).
+      `overflow-x: clip` empêche le débordement horizontal SANS créer ce
+      conteneur de défilement → corrige le bug. Là où `clip` n'est pas supporté
+      (vieux Safari), la déclaration est ignorée et on garde l'existant : aucun
+      risque de régression.
+   2) Pas de `100dvh` : la hauteur « dynamique » change quand Safari masque ses
+      barres au défilement, ce qui reflow la page et fait sauter la barre fixe.
+      `100vh` (statique) suffit à remplir l'écran sur les pages courtes. */
+html { overflow-x: clip; }
 body.has-bottomnav {
+  overflow-x: clip;
   padding-bottom: calc(72px + env(safe-area-inset-bottom));
   min-height: 100vh;
-  min-height: 100dvh;
 }
 
 .bottomnav {
@@ -281,21 +292,9 @@ body.has-bottomnav {
   gap: 2px;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  /* Force la barre sur sa propre couche de composition (GPU) : sur iOS, les
-     éléments position:fixed « décrochent » / restent en retard pendant le
-     défilement (surtout hors mode plein écran). La garder sur une couche
-     stable supprime ce lag — la barre reste collée en bas. */
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  /* Les raccourcis collent au plus bas de l'écran : on ne garde qu'un tout petit
-     espace de sécurité au-dessus du « home indicator » iOS (barre-pilule fine),
-     au lieu de réserver toute la zone d'encoche qui laissait une large bande
-     sombre sous les icônes. Le fond de la barre + le filet `::after` couvrent
-     malgré tout tout le bas, donc aucun fond sombre n'apparaît. */
-  padding: 9px 6px max(14px, calc(env(safe-area-inset-bottom) - 12px));
+  /* Réserve toute la zone du « home indicator » (comme les barres iOS natives
+     et comme le projet film) : le fond de la barre descend jusqu'au bord bas. */
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
 }
 .bn-item {
   flex: 1;
