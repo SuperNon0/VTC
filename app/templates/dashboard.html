@@ -3,6 +3,26 @@
 {% block badge %}calendrier{% endblock %}
 
 {% block app_content %}
+<script>
+// Mémorise la dernière vue calendrier choisie (mois/semaine) et la restaure
+// quand on revient sur l'accueil sans vue précisée (retour d'une course,
+// « Accueil »…). Choisir « Liste » explicitement efface la mémorisation.
+(function () {
+  try {
+    var p = new URLSearchParams(location.search);
+    var vue = p.get('vue');
+    var drill = p.has('j') && p.get('j') !== 'tous';
+    if (vue === 'mois' || vue === 'semaine') {
+      localStorage.setItem('vtc_vue', vue);
+    } else if (vue === 'liste' && !drill) {
+      localStorage.removeItem('vtc_vue');
+    } else if (!vue) {
+      var s = localStorage.getItem('vtc_vue');
+      if (s === 'mois' || s === 'semaine') { location.replace('/?vue=' + s); }
+    }
+  } catch (e) { /* localStorage indisponible : on reste en vue liste */ }
+})();
+</script>
 <main class="tx-main">
   <div class="tx-head">
     <h2 class="fl-title-serif" style="font-size:1.5rem">Mes courses</h2>
