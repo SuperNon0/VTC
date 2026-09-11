@@ -9,20 +9,20 @@
     <a href="{{ url_for('main.nouvelle_course') }}" class="btn primary small">+ Nouvelle course</a>
   </div>
 
-  {# Filtres par statut #}
-  <div class="tx-filtres">
-    {% for key, lbl, _st, _o in filtres %}
-    <a class="tx-chip{% if key == filtre_actif %} on{% endif %}"
-       href="{{ url_for('main.dashboard', f=key, j=jour_actif, du=du or none, au=au or none) }}">{{ lbl }}</a>
-    {% endfor %}
-  </div>
-
-  {# Filtres par jour #}
-  <div class="tx-filtres">
-    {% for key, lbl in jour_filtres %}
-    <a class="tx-chip{% if key == jour_actif %} on{% endif %}"
-       href="{{ url_for('main.dashboard', f=filtre_actif, j=key, du=du or none, au=au or none) }}">{{ lbl }}</a>
-    {% endfor %}
+  {# Filtres : statut + jour (listes déroulantes) #}
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem">
+    <select class="tx-input" style="flex:1;min-width:150px" aria-label="Filtrer par statut"
+            onchange="location.href='{{ url_for('main.dashboard', j=jour_actif, du=du or none, au=au or none) }}' + '&f=' + this.value">
+      {% for key, lbl, _st, _o in filtres %}
+      <option value="{{ key }}" {{ 'selected' if key == filtre_actif else '' }}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+    <select class="tx-input" style="flex:1;min-width:150px" aria-label="Filtrer par jour"
+            onchange="location.href='{{ url_for('main.dashboard', f=filtre_actif, du=du or none, au=au or none) }}' + '&j=' + this.value">
+      {% for key, lbl in jour_filtres %}
+      <option value="{{ key }}" {{ 'selected' if key == jour_actif else '' }}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
   </div>
 
   {% if jour_actif == 'periode' %}
