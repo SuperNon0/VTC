@@ -4,8 +4,9 @@
 
 {% block app_content %}
 <main class="tx-main tx-form-wrap">
-  <div style="margin-bottom:14px">
+  <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <a href="{{ url_for('main.dashboard') }}" class="btn ghost small">← Retour au calendrier</a>
+    <a href="{{ url_for('main.course_modifier', course_id=c.id) }}" class="btn ghost small">✏️ Modifier</a>
   </div>
 
   <article class="fl-card">

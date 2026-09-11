@@ -180,15 +180,12 @@ def course_estimer(course_id: int):
 # ─────────────────────────────────────────────────────────────────────────────
 # Création d'une course — cahier §6.1 / §6.2 / §6.3 / §6.5
 # ─────────────────────────────────────────────────────────────────────────────
-@main_bp.route("/nouvelle")
-@login_required
-def nouvelle_course():
-    compte = current_compte()
+def _course_form_ctx(compte) -> dict:
+    """Contexte commun au formulaire de course (création ET modification)."""
     lieux = C.liste_lieux()
     tarifs = C.liste_tarifs()
     villes = C.liste_villes()
-    return render_template(
-        "nouvelle_course.html",
+    return dict(
         compte=compte,
         is_super_admin=is_super_admin(),
         conducteurs=C.conducteurs_actifs(),
@@ -197,7 +194,8 @@ def nouvelle_course():
         villes=villes,
         villes_json=[{"id": v["id"], "nom": v["nom"]} for v in villes],
         lieux_json=[{"id": l["id"], "nom": l["nom"], "adresse": l["adresse"] or "",
-                     "ville_id": l["ville_id"]} for l in lieux],
+                     "ville_id": l["ville_id"], "ville_nom": l["ville_nom"] or ""}
+                    for l in lieux],
         tarifs_json=[{"id": t["id"], "prix": t["prix"],
                       "dep_lieu": t["lieu_depart_id"], "dep_ville": t["ville_depart_id"],
                       "arr_lieu": t["lieu_arrivee_id"], "arr_ville": t["ville_arrivee_id"],
@@ -205,6 +203,67 @@ def nouvelle_course():
                      for t in tarifs],
         ai_on=ai_configured(),
     )
+
+
+@main_bp.route("/nouvelle")
+@login_required
+def nouvelle_course():
+    return render_template("nouvelle_course.html", **_course_form_ctx(current_compte()))
+
+
+@main_bp.route("/course/<int:course_id>/modifier")
+@login_required
+def course_modifier(course_id: int):
+    """Formulaire pré-rempli pour modifier une course existante."""
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if (compte["id"] not in (course["conducteur_id"], course["createur_id"])
+            and not is_super_admin()):
+        abort(403)
+    ctx = _course_form_ctx(compte)
+    # Date/heure séparées à partir du timestamp.
+    date_val = heure_val = ""
+    if course["quand"]:
+        d = datetime.fromtimestamp(course["quand"])
+        date_val, heure_val = d.strftime("%Y-%m-%d"), d.strftime("%H:%M")
+    # Prix : grille pré-sélectionnée, sinon prix libre.
+    if course["tarif_id"] and course["prix_source"] == "grille":
+        sel_tarif, prix_libre_val = str(course["tarif_id"]), ""
+    elif course["prix"] is not None:
+        sel_tarif, prix_libre_val = "autre", f"{course['prix']:.2f}"
+    else:
+        sel_tarif, prix_libre_val = "", ""
+    ctx.update(
+        edit=True, crs=course,
+        form_action=url_for("main.course_modifier_save", course_id=course_id),
+        cancel_url=url_for("main.course_detail", course_id=course_id),
+        submit_label="Enregistrer les modifications",
+        date_val=date_val, heure_val=heure_val,
+        sel_tarif=sel_tarif, prix_libre_val=prix_libre_val,
+        sel_conducteur=course["conducteur_id"],
+    )
+    return render_template("nouvelle_course.html", **ctx)
+
+
+@main_bp.post("/course/<int:course_id>/modifier")
+@login_required
+def course_modifier_save(course_id: int):
+    compte = current_compte()
+    course = C.get_course(course_id)
+    if course is None:
+        abort(404)
+    if (compte["id"] not in (course["conducteur_id"], course["createur_id"])
+            and not is_super_admin()):
+        abort(403)
+    data, erreur = _lire_course_form(request.form)
+    if erreur:
+        flash(erreur, "error")
+        return redirect(url_for("main.course_modifier", course_id=course_id))
+    C.update_course(course_id, data)
+    flash("Course modifiée ✓", "success")
+    return redirect(url_for("main.course_detail", course_id=course_id))
 
 
 @main_bp.post("/api/extract")
@@ -219,35 +278,28 @@ def api_extract():
     return jsonify(ok=True, infos=infos)
 
 
-@main_bp.post("/api/courses")
-@login_required
-def api_creer_course():
-    """Crée une course, l'assigne, et notifie le conducteur assigné (§6.5)."""
-    compte = current_compte()
-    f = request.form
+def _lire_course_form(f):
+    """Valide et normalise le formulaire de course (création ET modification).
 
+    Renvoie (data, erreur). `data` est prêt pour creer_course/update_course
+    (sans `statut`, géré par l'appelant). `erreur` est un message ou None.
+    """
     try:
         conducteur_id = int(f.get("conducteur_id", ""))
     except (TypeError, ValueError):
         conducteur_id = 0
-    valides = {c["id"] for c in C.conducteurs_actifs()}
-    if conducteur_id not in valides:
-        flash("Choisis un conducteur assigné valide.", "error")
-        return redirect(url_for("main.nouvelle_course"))
+    if conducteur_id not in {c["id"] for c in C.conducteurs_actifs()}:
+        return None, "Choisis un conducteur assigné valide."
 
     # Date et heure : deux champs séparés → timestamp. L'heure vide vaut 00:00.
     date_str = (f.get("date") or "").strip()
     heure_str = (f.get("heure") or "").strip() or "00:00"
-    if date_str:
-        quand = _parse_datetime_local(f"{date_str}T{heure_str}")
-    else:
-        quand = _parse_datetime_local(f.get("quand", ""))
+    quand = (_parse_datetime_local(f"{date_str}T{heure_str}") if date_str
+             else _parse_datetime_local(f.get("quand", "")))
     if quand is None:
-        flash("Renseigne au moins une date valide.", "error")
-        return redirect(url_for("main.nouvelle_course"))
+        return None, "Renseigne au moins une date valide."
 
     prix, prix_source, tarif_id = _resoudre_prix(f)
-
     depart = (f.get("depart") or "").strip() or None
     arrivee = (f.get("arrivee") or "").strip() or None
 
@@ -258,7 +310,7 @@ def api_creer_course():
         if est:
             distance_km, duree_min = est["distance_km"], est["duree_min"]
 
-    data = {
+    return {
         "client_nom": (f.get("client_nom") or "").strip() or None,
         "client_tel": (f.get("client_tel") or "").strip() or None,
         "depart": depart,
@@ -269,16 +321,27 @@ def api_creer_course():
         "tarif_id": tarif_id,
         "distance_km": distance_km,
         "duree_min": duree_min,
-        "statut": "a_faire",
         "conducteur_id": conducteur_id,
         "client_id": _int_or_none(f.get("client_id")),
         "notes": (f.get("notes") or "").strip() or None,
-    }
+    }, None
+
+
+@main_bp.post("/api/courses")
+@login_required
+def api_creer_course():
+    """Crée une course, l'assigne, et notifie le conducteur assigné (§6.5)."""
+    compte = current_compte()
+    data, erreur = _lire_course_form(request.form)
+    if erreur:
+        flash(erreur, "error")
+        return redirect(url_for("main.nouvelle_course"))
+    data["statut"] = "a_faire"
     course_id = C.creer_course(data, compte["id"])
 
     # Notification push au conducteur assigné (jamais au créateur) — §5/§6.5.
     webpush.notifier_conducteur(
-        conducteur_id, notif_titre(data), notif_corps(data),
+        data["conducteur_id"], notif_titre(data), notif_corps(data),
         url=url_for("main.course_detail", course_id=course_id),
     )
     flash("Course créée et assignée ✓", "success")

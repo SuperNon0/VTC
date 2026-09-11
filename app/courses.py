@@ -90,6 +90,27 @@ def get_course(course_id: int):
     ).fetchone()
 
 
+def update_course(course_id: int, data: dict) -> None:
+    """Met à jour une course existante (le statut et le créateur sont conservés)."""
+    db = get_db()
+    db.execute(
+        """UPDATE courses SET
+             client_nom = ?, client_tel = ?, depart = ?, arrivee = ?, quand = ?,
+             prix = ?, prix_source = ?, tarif_id = ?, distance_km = ?, duree_min = ?,
+             conducteur_id = ?, client_id = ?, notes = ?, maj = ?
+           WHERE id = ?""",
+        (
+            data.get("client_nom"), data.get("client_tel"),
+            data.get("depart"), data.get("arrivee"), data.get("quand"),
+            data.get("prix"), data.get("prix_source"), data.get("tarif_id"),
+            data.get("distance_km"), data.get("duree_min"),
+            data["conducteur_id"], data.get("client_id"),
+            data.get("notes"), int(time.time()), course_id,
+        ),
+    )
+    db.commit()
+
+
 def courses_assignees(conducteur_id: int, a_venir: bool = False) -> list:
     """Courses assignées à un conducteur (base du calendrier personnel, §6.6)."""
     db = get_db()

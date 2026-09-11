@@ -271,20 +271,6 @@ body.has-bottomnav {
   min-height: 100dvh;
 }
 
-/* Filet de sécurité : une bande couleur « surface » collée tout en bas, sur
-   toute la largeur, derrière la barre. Ainsi, quelle que soit la façon dont iOS
-   place la barre par rapport à la zone du « home indicator », aucun fond sombre
-   n'apparaît sous les raccourcis. */
-body.has-bottomnav::after {
-  content: "";
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  height: env(safe-area-inset-bottom);
-  background: var(--surface);
-  z-index: 59;
-  pointer-events: none;
-}
-
 .bottomnav {
   position: fixed;
   left: 0; right: 0; bottom: 0;
@@ -295,6 +281,15 @@ body.has-bottomnav::after {
   gap: 2px;
   background: var(--surface);
   border-top: 1px solid var(--border);
+  /* Force la barre sur sa propre couche de composition (GPU) : sur iOS, les
+     éléments position:fixed « décrochent » / restent en retard pendant le
+     défilement (surtout hors mode plein écran). La garder sur une couche
+     stable supprime ce lag — la barre reste collée en bas. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   /* Les raccourcis collent au plus bas de l'écran : on ne garde qu'un tout petit
      espace de sécurité au-dessus du « home indicator » iOS (barre-pilule fine),
      au lieu de réserver toute la zone d'encoche qui laissait une large bande

@@ -1,10 +1,21 @@
 {% extends "_layout.html" %}
-{% block title %}Nouvelle course — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
-{% block badge %}nouvelle course{% endblock %}
+{# Valeurs par défaut : le même gabarit sert à créer ET à modifier une course. #}
+{% set edit = edit|default(false) %}
+{% set crs = crs|default(none) %}
+{% set form_action = form_action|default(url_for('main.api_creer_course')) %}
+{% set cancel_url = cancel_url|default(url_for('main.dashboard')) %}
+{% set submit_label = submit_label|default('Créer et assigner') %}
+{% set date_val = date_val|default('') %}
+{% set heure_val = heure_val|default('') %}
+{% set sel_tarif = sel_tarif|default('') %}
+{% set prix_libre_val = prix_libre_val|default('') %}
+{% set sel_conducteur = sel_conducteur|default(compte['id']) %}
+{% block title %}{{ 'Modifier la course' if edit else 'Nouvelle course' }} — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
+{% block badge %}{{ 'modifier course' if edit else 'nouvelle course' }}{% endblock %}
 
 {% block app_content %}
 <main class="tx-main tx-form-wrap">
-  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">Nouvelle course</h2>
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:1rem">{{ 'Modifier la course' if edit else 'Nouvelle course' }}</h2>
 
   {# ── Extraction IA d'un message client (cahier §6.1) ─────────────────────── #}
   <section class="fl-card" style="margin-bottom:1rem">
@@ -25,8 +36,8 @@
     {% endif %}
   </section>
 
-  <form method="post" action="{{ url_for('main.api_creer_course') }}" class="fl-card tx-form">
-    <input type="hidden" name="client_id" id="client_id">
+  <form method="post" action="{{ form_action }}" class="fl-card tx-form">
+    <input type="hidden" name="client_id" id="client_id" value="{{ crs.client_id if crs and crs.client_id else '' }}">
     <input type="hidden" name="depart_lieu_id" id="depart_lieu_id">
     <input type="hidden" name="arrivee_lieu_id" id="arrivee_lieu_id">
 
@@ -36,6 +47,7 @@
       <div class="tx-ac">
         <input class="tx-input" type="text" name="client_nom" id="client_nom"
                autocomplete="off" placeholder="Nom du client"
+               value="{{ crs.client_nom if crs and crs.client_nom else '' }}"
                oninput="rechercherClient(this.value)">
         <div class="tx-ac-list" id="ac-list"></div>
       </div>
@@ -44,7 +56,7 @@
     <div class="tx-field">
       <label class="fl-label" for="client_tel">Téléphone</label>
       <input class="tx-input" type="tel" name="client_tel" id="client_tel"
-             placeholder="06 …">
+             placeholder="06 …" value="{{ crs.client_tel if crs and crs.client_tel else '' }}">
     </div>
 
     {# ── Prise en charge : d'abord la VILLE, puis l'adresse (filtrée) — §6.2 ─── #}
@@ -59,6 +71,7 @@
       <div class="tx-ac">
         <input class="tx-input" type="text" name="depart" id="depart" autocomplete="off"
                placeholder="Choisis un lieu de la ville, ou tape une adresse"
+               value="{{ crs.depart if crs and crs.depart else '' }}"
                oninput="chercherLieu('depart', this.value)"
                onfocus="showLieux('depart', this.value)">
         <div class="tx-ac-list" id="ac-depart"></div>
@@ -79,6 +92,7 @@
       <div class="tx-ac">
         <input class="tx-input" type="text" name="arrivee" id="arrivee" autocomplete="off"
                placeholder="Choisis un lieu de la ville, ou tape une adresse"
+               value="{{ crs.arrivee if crs and crs.arrivee else '' }}"
                oninput="chercherLieu('arrivee', this.value)"
                onfocus="showLieux('arrivee', this.value)">
         <div class="tx-ac-list" id="ac-arrivee"></div>
@@ -96,9 +110,9 @@
       </div>
       <div style="display:flex;gap:.6rem;margin-top:.5rem">
         <input class="tx-input" type="date" name="date" id="date" required style="flex:2"
-               aria-label="Date">
+               value="{{ date_val }}" aria-label="Date">
         <input class="tx-input" type="time" name="heure" id="heure" style="flex:1"
-               aria-label="Heure">
+               value="{{ heure_val }}" aria-label="Heure">
       </div>
     </div>
 
@@ -108,12 +122,13 @@
       <select class="tx-input" name="tarif_choix" id="tarif_choix" onchange="onTarif()">
         <option value="">— Choisir —</option>
         {% for t in tarifs %}
-        <option value="{{ t.id }}">{{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €</option>
+        <option value="{{ t.id }}" {{ 'selected' if sel_tarif == t.id|string else '' }}>{{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €</option>
         {% endfor %}
-        <option value="autre">Autre (prix libre)</option>
+        <option value="autre" {{ 'selected' if sel_tarif == 'autre' else '' }}>Autre (prix libre)</option>
       </select>
       <input class="tx-input" type="text" inputmode="decimal" name="prix_libre" id="prix_libre"
-             placeholder="Prix en €" style="display:none;margin-top:.5rem">
+             placeholder="Prix en €" value="{{ prix_libre_val }}"
+             style="margin-top:.5rem;{{ '' if sel_tarif == 'autre' else 'display:none' }}">
       <p class="access-note" id="tarif-auto" style="text-align:left;margin:.35rem 0 0;display:none">
         Tarif sélectionné automatiquement d'après le trajet — modifiable.
       </p>
@@ -125,7 +140,7 @@
       <select class="tx-input" name="conducteur_id" id="conducteur_id" required>
         <option value="">— Choisir le conducteur —</option>
         {% for c in conducteurs %}
-        <option value="{{ c.id }}" {{ 'selected' if c.id == compte['id'] else '' }}>
+        <option value="{{ c.id }}" {{ 'selected' if c.id == sel_conducteur else '' }}>
           {{ nom_compte(c) }}{% if c.id == compte['id'] %} (moi){% endif %}{% if is_super_admin and c.role == 'super_admin' %} · admin{% endif %}
         </option>
         {% endfor %}
@@ -136,12 +151,12 @@
     <div class="tx-field">
       <label class="fl-label" for="notes">Notes</label>
       <textarea class="tx-input tx-area" name="notes" id="notes" rows="2"
-                placeholder="Infos complémentaires…"></textarea>
+                placeholder="Infos complémentaires…">{{ crs.notes if crs and crs.notes else '' }}</textarea>
     </div>
 
     <div style="display:flex;gap:.8rem;justify-content:flex-end;margin-top:.4rem">
-      <a href="{{ url_for('main.dashboard') }}" class="btn ghost">Annuler</a>
-      <button type="submit" class="btn primary">Créer et assigner</button>
+      <a href="{{ cancel_url }}" class="btn ghost">Annuler</a>
+      <button type="submit" class="btn primary">{{ submit_label }}</button>
     </div>
   </form>
 </main>
@@ -241,10 +256,28 @@ function showLieux(field, q) {
   }).join('');
   list.classList.add('open');
 }
+// Normalise pour comparer sans accents ni casse (« Montpellier » == « montpellier »).
+function _norm(s) {
+  return (s || '').toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+// Compose une adresse « géocodable » : nom + adresse + ville, en n'ajoutant la
+// ville que si elle n'est pas DÉJÀ présente dans le nom/adresse (évite « … 34000
+// Montpellier, Montpellier »).
+function combineAdr(nom, adresse, ville) {
+  var parts = [];
+  if (nom) parts.push(nom);
+  if (adresse) parts.push(adresse);
+  var base = parts.join(', ');
+  if (ville && _norm(base).indexOf(_norm(ville)) === -1) {
+    base = base ? (base + ', ' + ville) : ville;
+  }
+  return base || nom || adresse || '';
+}
 function choisirLieu(field, id) {
   var l = (window.LIEUX || []).find(function (x) { return x.id === id; });
   if (!l) return;
-  document.getElementById(field).value = l.adresse || l.nom;
+  document.getElementById(field).value = combineAdr(l.nom, l.adresse, l.ville_nom);
   document.getElementById(field + '_lieu_id').value = l.id;
   // Cale aussi la ville du champ sur celle du lieu choisi.
   var vs = document.getElementById('ville-' + field);
@@ -411,7 +444,9 @@ function renderClientAdr() {
 // Un clic sur une adresse habituelle : remplit le champ et, si cette adresse
 // correspond à un lieu fréquent enregistré, relie le lieu → auto-sélection du tarif.
 function pickAdr(field, adresse, ville) {
-  document.getElementById(field).value = adresse;
+  // Adresse client : on complète avec la ville (sauf si déjà présente) pour une
+  // meilleure estimation, comme pour les lieux fréquents.
+  document.getElementById(field).value = combineAdr('', adresse, ville);
   if (ville) setVilleByName(field, ville);   // cale la ville du champ sur celle de l'adresse
   matchLieuTexte(field, adresse);
   autoMatchTarif();

@@ -78,12 +78,25 @@
 
     {% for t in tarifs %}
     <div class="fl-card" style="margin-bottom:10px">
-      <div class="fl-title-serif" style="font-size:1.05rem;margin-bottom:.5rem">
-        {{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €
-        {% if t.bidirectionnel %}<span class="tx-muted" style="font-size:.8rem;font-family:var(--font-mono)"> · ↔ deux sens</span>{% endif %}
+      {# Ligne compacte : « Départ → Arrivée — prix », + stylo (modifier) + croix (supprimer). #}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div class="fl-title-serif" style="font-size:1.05rem;min-width:0">
+          {{ t.libelle }} — {{ '%.2f'|format(t.prix) }} €
+          {% if t.bidirectionnel %}<span class="tx-muted" style="font-size:.8rem;font-family:var(--font-mono)"> · ↔</span>{% endif %}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button type="button" class="btn ghost small" title="Modifier"
+                  onclick="toggleTarifEdit(this)">✏️</button>
+          <form method="post" action="{{ url_for('config.tarif_supprimer', tarif_id=t.id) }}"
+                onsubmit="return confirm('Supprimer cette grille ?')" style="display:inline">
+            <button type="submit" class="btn danger small" title="Supprimer">✕</button>
+          </form>
+        </div>
       </div>
+
+      {# Formulaire de modification : caché, révélé par le stylo. #}
       <form method="post" action="{{ url_for('config.tarif_modifier', tarif_id=t.id) }}"
-            style="display:flex;flex-direction:column;gap:8px">
+            class="tarif-edit" hidden style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           {% set dep_sel = ('v:' ~ t.ville_depart_id) if t.ville_depart_id else (('l:' ~ t.lieu_depart_id) if t.lieu_depart_id else '') %}
           {% set arr_sel = ('v:' ~ t.ville_arrivee_id) if t.ville_arrivee_id else (('l:' ~ t.lieu_arrivee_id) if t.lieu_arrivee_id else '') %}
@@ -102,16 +115,23 @@
           <span>↔ Valable dans les deux sens</span>
         </label>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button type="submit" class="btn ghost small">Enregistrer</button>
+          <button type="submit" class="btn primary small">Enregistrer</button>
         </div>
-      </form>
-      <form method="post" action="{{ url_for('config.tarif_supprimer', tarif_id=t.id) }}"
-            onsubmit="return confirm('Supprimer cette grille ?')" style="margin-top:6px;text-align:right">
-        <button type="submit" class="btn danger small">Supprimer</button>
       </form>
     </div>
     {% endfor %}
     {% endif %}
   </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Stylo ✏️ : affiche/masque le formulaire de modification de CE tarif.
+function toggleTarifEdit(btn) {
+  var card = btn.closest('.fl-card');
+  var form = card ? card.querySelector('.tarif-edit') : null;
+  if (form) form.hidden = !form.hidden;
+}
+</script>
 {% endblock %}
