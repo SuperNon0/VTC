@@ -125,12 +125,29 @@
           ap = document.getElementById('adr-apple'), cp = document.getElementById('adr-copy');
       document.getElementById('adr-sheet-adr').textContent = adr;
       if (estLien(adr)) {
-        var w = wazeDepuisLien(adr);
-        if (w) { waze.href = w; waze.textContent = 'Ouvrir dans Waze'; waze.hidden = false; }
-        else { waze.hidden = true; }
         g.href = adr; g.textContent = 'Ouvrir le lien'; g.hidden = false;
         ap.hidden = true;
         cp.textContent = 'Copier le lien';
+        var w = wazeDepuisLien(adr);
+        if (w) {
+          waze.href = w; waze.textContent = 'Ouvrir dans Waze';
+          waze.classList.remove('disabled'); waze.hidden = false;
+        } else {
+          // Lien court (maps.app.goo.gl…) : on demande au serveur de le résoudre.
+          waze.hidden = false; waze.href = adr;
+          waze.textContent = 'Ouvrir dans Waze (recherche…)';
+          waze.classList.add('disabled');
+          fetch('/api/maps-waze?u=' + encodeURIComponent(adr), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              if (document.getElementById('adr-sheet-adr').textContent !== adr) return;
+              if (j && j.waze) {
+                waze.href = j.waze; waze.textContent = 'Ouvrir dans Waze';
+                waze.classList.remove('disabled');
+              } else { waze.hidden = true; }   // non convertible → on retire le bouton
+            })
+            .catch(function () { waze.hidden = true; });
+        }
       } else {
         var enc = encodeURIComponent(adr);
         waze.href = 'https://waze.com/ul?q=' + enc + '&navigate=yes'; waze.textContent = 'Ouvrir dans Waze'; waze.hidden = false;

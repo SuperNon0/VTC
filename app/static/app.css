@@ -486,3 +486,6 @@ body.has-bottomnav {
 .cal-course.st-en_cours { border-left-color: var(--accent-3); }
 .cal-course.st-terminee { border-left-color: var(--accent-2); }
 .cal-course.st-annulee  { border-left-color: var(--muted); opacity: .7; }
+
+/* Bouton de la feuille d'adresse en attente (résolution Waze d'un lien court) */
+.adr-sheet-btn.disabled { opacity: .55; pointer-events: none; }
