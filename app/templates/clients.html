@@ -75,7 +75,7 @@
               </select>
               <button type="button" class="btn danger small adr-del icon-btn" aria-label="Supprimer">{{ ic.icon('x', 15) }}</button>
             </div>
-            <input class="tx-input adr-val" placeholder="Adresse complète" value="{{ a.adresse }}">
+            <input class="tx-input adr-val" placeholder="Adresse OU lien Google Maps" value="{{ a.adresse }}">
           </div>
           {% endfor %}
         </div>
@@ -124,7 +124,7 @@ function adrRowHTML(label, ville, adresse) {
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
       '</button>' +
     '</div>' +
-    '<input class="tx-input adr-val" placeholder="Adresse complète" value="' + _e(adresse) + '">' +
+    '<input class="tx-input adr-val" placeholder="Adresse OU lien Google Maps" value="' + _e(adresse) + '">' +
     '</div>';
 }
 // Recalcule le JSON caché à partir des lignes visibles du widget.

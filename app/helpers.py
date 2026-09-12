@@ -22,8 +22,13 @@ def _cle_cmp(s: str) -> str:
 def adresse_complete(adresse: str | None, ville: str | None) -> str:
     """Adresse + ville, sans répéter la ville si elle est déjà dans l'adresse
     (comparaison tolérante aux tirets/espaces). Ex. « 227b Rte des Marines » +
-    Le Grau-du-Roi → « 227b Rte des Marines, Le Grau-du-Roi »."""
+    Le Grau-du-Roi → « 227b Rte des Marines, Le Grau-du-Roi ».
+
+    Si l'adresse est un lien (http/https), on la renvoie telle quelle (on ne
+    colle pas la ville à une URL)."""
     base = (adresse or "").strip()
+    if base[:4].lower() == "http":
+        return base
     ville = (ville or "").strip()
     if ville and _cle_cmp(ville) and _cle_cmp(ville) not in _cle_cmp(base):
         base = (base + ", " + ville) if base else ville

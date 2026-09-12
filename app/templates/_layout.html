@@ -101,14 +101,44 @@
       t.textContent = m; t.classList.add('show');
       setTimeout(function () { t.classList.remove('show'); }, 1800);
     }
+    function estLien(s) { return /^https?:\/\//i.test(s); }
+    // Convertit un lien Google Maps en lien Waze quand c'est possible :
+    // coordonnées (@lat,lng ou ?q=/ll=/destination=lat,lng), sinon une adresse
+    // en clair. Renvoie null pour un lien court (goo.gl) non lisible côté client.
+    function wazeDepuisLien(u) {
+      var m = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+           || u.match(/[?&](?:q|query|ll|sll|daddr|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+      if (m) return 'https://waze.com/ul?ll=' + m[1] + ',' + m[2] + '&navigate=yes';
+      var q = u.match(/[?&](?:q|query|daddr|destination)=([^&]+)/);
+      if (q) {
+        var a = decodeURIComponent(q[1].replace(/\+/g, ' '));
+        // On envoie l'adresse à Waze, sauf si ce sont de pures coordonnées (déjà
+        // traitées plus haut) — un numéro de rue « 12 rue … » reste une adresse.
+        if (!/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(a))
+          return 'https://waze.com/ul?q=' + encodeURIComponent(a) + '&navigate=yes';
+      }
+      return null;
+    }
     function openAdrSheet(adr) {
       adr = (adr || '').trim(); if (!adr) return;
-      var enc = encodeURIComponent(adr);
+      var waze = document.getElementById('adr-waze'), g = document.getElementById('adr-gmaps'),
+          ap = document.getElementById('adr-apple'), cp = document.getElementById('adr-copy');
       document.getElementById('adr-sheet-adr').textContent = adr;
-      document.getElementById('adr-waze').href = 'https://waze.com/ul?q=' + enc + '&navigate=yes';
-      document.getElementById('adr-gmaps').href = 'https://www.google.com/maps/search/?api=1&query=' + enc;
-      document.getElementById('adr-apple').href = 'https://maps.apple.com/?q=' + enc;
-      document.getElementById('adr-copy').onclick = function () { copyAdr(adr); };
+      if (estLien(adr)) {
+        var w = wazeDepuisLien(adr);
+        if (w) { waze.href = w; waze.textContent = 'Ouvrir dans Waze'; waze.hidden = false; }
+        else { waze.hidden = true; }
+        g.href = adr; g.textContent = 'Ouvrir le lien'; g.hidden = false;
+        ap.hidden = true;
+        cp.textContent = 'Copier le lien';
+      } else {
+        var enc = encodeURIComponent(adr);
+        waze.href = 'https://waze.com/ul?q=' + enc + '&navigate=yes'; waze.textContent = 'Ouvrir dans Waze'; waze.hidden = false;
+        g.href = 'https://www.google.com/maps/search/?api=1&query=' + enc; g.textContent = 'Ouvrir dans Google Maps'; g.hidden = false;
+        ap.href = 'https://maps.apple.com/?q=' + enc; ap.hidden = false;
+        cp.textContent = "Copier l'adresse";
+      }
+      cp.onclick = function () { copyAdr(adr); };
       var s = document.getElementById('adr-sheet');
       s.hidden = false;
       requestAnimationFrame(function () { s.classList.add('open'); });
