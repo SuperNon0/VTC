@@ -130,9 +130,9 @@
       {# Sur l'accueil, la carte entière ouvre le détail : les adresses ne sont PAS
          cliquables ici (elles le deviennent sur la page de détail). #}
       <div class="tx-trajet">
-        <span class="tx-pt">{{ c.depart or '—' }}</span>
+        <span class="tx-pt">{{ '🔗 Lien Maps' if c.depart and c.depart.lower().startswith('http') else (c.depart or '—') }}</span>
         <span class="tx-arrow">→</span>
-        <span class="tx-pt">{{ c.arrivee or '—' }}</span>
+        <span class="tx-pt">{{ '🔗 Lien Maps' if c.arrivee and c.arrivee.lower().startswith('http') else (c.arrivee or '—') }}</span>
       </div>
       {% if c.notes %}<div class="tx-notes">{{ c.notes }}</div>{% endif %}
       <div class="tx-course-foot">
@@ -217,6 +217,7 @@ async function activerPush() {
   function pad(n){ return (n < 10 ? '0' : '') + n; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function txt(s){ return /^https?:\/\//i.test(s||'') ? '🔗 Lien' : esc(s); }
   function key(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function parDate(){
     // Regroupé par la DATE serveur (c.d), comme la vue liste — pas de fuseau JS.
@@ -267,7 +268,7 @@ async function activerPush() {
       list.forEach(function(c){
         h+='<a class="cal-course st-'+c.statut+'" href="/course/'+c.id+'">'
          + '<b>'+esc(c.t)+'</b> '+esc(c.client||'Client')
-         + '<span class="cal-tr">'+esc(c.depart)+' → '+esc(c.arrivee)+(c.prix!=null?' · '+c.prix.toFixed(2)+' €':'')+'</span></a>';
+         + '<span class="cal-tr">'+txt(c.depart)+' → '+txt(c.arrivee)+(c.prix!=null?' · '+c.prix.toFixed(2)+' €':'')+'</span></a>';
       });
       h+='</div>';
     }

@@ -309,6 +309,8 @@ function _norm(s) {
 // ville que si elle n'est pas DÉJÀ présente dans le nom/adresse (évite « … 34000
 // Montpellier, Montpellier »).
 function combineAdr(nom, adresse, ville) {
+  // Un lien (Google Maps…) reste tel quel : on n'y accole ni nom ni ville.
+  if (adresse && /^https?:\/\//i.test(adresse.trim())) return adresse.trim();
   var parts = [];
   if (nom) parts.push(nom);
   if (adresse) parts.push(adresse);

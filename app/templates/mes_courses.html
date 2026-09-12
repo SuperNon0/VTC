@@ -49,9 +49,9 @@
     </div>
     {# Carte-lien vers le détail : adresses NON cliquables ici (elles le sont sur le détail). #}
     <div class="tx-trajet">
-      <span class="tx-pt">{{ c.depart or '—' }}</span>
+      <span class="tx-pt">{{ '🔗 Lien Maps' if c.depart and c.depart.lower().startswith('http') else (c.depart or '—') }}</span>
       <span class="tx-arrow">→</span>
-      <span class="tx-pt">{{ c.arrivee or '—' }}</span>
+      <span class="tx-pt">{{ '🔗 Lien Maps' if c.arrivee and c.arrivee.lower().startswith('http') else (c.arrivee or '—') }}</span>
     </div>
     <div class="tx-course-foot">
       {% if c.prix is not none %}<span class="tx-prix">{{ '%.2f'|format(c.prix) }} €</span>{% else %}<span></span>{% endif %}
