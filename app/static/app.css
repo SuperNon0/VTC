@@ -206,6 +206,132 @@
 .tx-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; }
 .tx-stat { text-align: center; }
 
+/* --- Statistiques avancées (KPIs + graphiques) --------------------------- */
+.tx-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.tx-kpi { padding: 0.85rem 0.9rem; }
+.tx-kpi-accent { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.tx-kpi-ic { opacity: 0.85; margin-bottom: 0.35rem; }
+.tx-kpi-val {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: var(--text);
+}
+.tx-kpi-accent .tx-kpi-val { color: var(--accent); }
+.tx-kpi-lbl {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.25rem;
+}
+
+.tx-chart { margin-bottom: 1rem; }
+.tx-chart-head { margin-bottom: 0.9rem; }
+.tx-chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Graphiques à barres verticales */
+.tx-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 140px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.tx-bars::-webkit-scrollbar { height: 4px; }
+.tx-bars::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.tx-bar-col {
+  flex: 1 1 0;
+  min-width: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+.tx-bar-val { font-size: 0.6rem; color: var(--muted); height: 0.9rem; line-height: 0.9rem; }
+.tx-bar-wrap {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 26px;
+  display: flex;
+  align-items: flex-end;
+}
+.tx-bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+.tx-bar-accent  { background: linear-gradient(180deg, var(--accent-hover), var(--accent)); }
+.tx-bar-accent2 { background: linear-gradient(180deg, var(--accent-2), color-mix(in srgb, var(--accent-2) 70%, #000)); }
+.tx-bar-lbl {
+  font-size: 0.58rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+  white-space: nowrap;
+  transform: rotate(0deg);
+}
+
+/* Barre de répartition par statut (empilée) + légende */
+.tx-statbar {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  margin-bottom: 0.8rem;
+}
+.tx-statbar-seg { min-width: 3px; }
+.tx-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.tx-legend-item {
+  font-size: 0.74rem;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.tx-legend-item strong { color: var(--text); font-weight: 600; }
+.tx-legend-pct { color: var(--muted); opacity: 0.8; }
+.tx-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.st-terminee { background: var(--accent-2); }
+.st-en_cours { background: var(--accent-3); }
+.st-a_faire  { background: var(--accent); }
+.st-annulee  { background: var(--danger); }
+
+/* Top clients (barres horizontales) */
+.tx-top { display: flex; flex-direction: column; gap: 0.7rem; }
+.tx-top-row { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
+.tx-top-nom { font-size: 0.82rem; color: var(--text); }
+.tx-top-track {
+  height: 8px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tx-top-fill {
+  height: 100%;
+  min-width: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 4px;
+}
+.tx-top-meta { font-size: 0.68rem; color: var(--muted); }
+
 /* --- Toast --------------------------------------------------------------- */
 .toast {
   position: fixed;

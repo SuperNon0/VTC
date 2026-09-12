@@ -1,32 +1,183 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Mes statistiques — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}mes stats{% endblock %}
 
+{% set k = stats.kpi %}
+{% macro euro(v) %}{{ '%.2f'|format(v or 0) }} €{% endmacro %}
+
 {% block app_content %}
 <main class="tx-main">
-  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.4rem">Mes statistiques</h2>
-  <p class="access-note" style="text-align:left;margin:0 0 1rem">
-    Aperçu du mois {{ apercu.mois }}. Le tableau de bord détaillé (nombre de
-    courses, chiffre d'affaires, distance…) sera précisé dans une prochaine
-    version — cette vue unique est déjà réutilisée par l'admin via
-    « voir en tant que ».
-  </p>
+  <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.2rem">Mes statistiques</h2>
+  <p class="access-note" style="text-align:left;margin:0 0 1rem">{{ periode_label }}</p>
 
-  <div class="tx-stats">
-    <div class="fl-card tx-stat">
-      <div class="fl-label">Courses ce mois</div>
-      <div class="fl-value-serif" style="font-size:2rem">{{ apercu.nb_courses }}</div>
+  {# ── Filtre de période ─────────────────────────────────────────────────── #}
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
+    {{ ic.icon("sliders", 18, "var(--accent)") }}
+    <select class="tx-input" style="flex:1;min-width:150px" aria-label="Période"
+            onchange="location.href='{{ url_for('main.mes_stats', du=du or none, au=au or none) }}' + '&p=' + this.value">
+      {% for key, lbl in periodes %}
+        <option value="{{ key }}"{% if key == periode_actif %} selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if periode_actif == 'perso' %}
+  <form method="get" class="fl-card" style="margin-bottom:1rem">
+    <input type="hidden" name="p" value="perso">
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:130px">
+        <label class="fl-label">Du</label>
+        <input class="tx-input" type="date" name="du" value="{{ du }}">
+      </div>
+      <div style="flex:1;min-width:130px">
+        <label class="fl-label">Au</label>
+        <input class="tx-input" type="date" name="au" value="{{ au }}">
+      </div>
     </div>
-    <div class="fl-card tx-stat">
-      <div class="fl-label">CA (courses terminées)</div>
-      <div class="fl-value-serif" style="font-size:2rem">{{ '%.2f'|format(apercu.ca) }} €</div>
+    <button class="btn" type="submit" style="margin-top:.7rem">Afficher</button>
+  </form>
+  {% endif %}
+
+  {% if stats.vide %}
+  <div class="fl-card" style="text-align:center;padding:2rem 1rem">
+    {{ ic.icon("chart", 34, "var(--muted)") }}
+    <p class="access-note" style="margin:.6rem 0 0">Aucune course sur cette période.</p>
+  </div>
+  {% else %}
+
+  {# ── KPIs ──────────────────────────────────────────────────────────────── #}
+  <div class="tx-kpis">
+    <div class="fl-card tx-kpi tx-kpi-accent">
+      <div class="tx-kpi-ic">{{ ic.icon("euro", 20, "var(--accent)") }}</div>
+      <div class="tx-kpi-val">{{ euro(k.ca_realise) }}</div>
+      <div class="tx-kpi-lbl">CA réalisé</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("calendar", 20, "var(--accent-3)") }}</div>
+      <div class="tx-kpi-val">{{ euro(k.ca_prevu) }}</div>
+      <div class="tx-kpi-lbl">CA à venir ({{ k.nb_a_venir }})</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("list", 20) }}</div>
+      <div class="tx-kpi-val">{{ k.nb_total }}</div>
+      <div class="tx-kpi-lbl">Courses</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("check", 20, "var(--accent-2)") }}</div>
+      <div class="tx-kpi-val">{{ k.nb_terminees }}</div>
+      <div class="tx-kpi-lbl">Terminées</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("euro", 20) }}</div>
+      <div class="tx-kpi-val">{{ euro(k.prix_moyen) }}</div>
+      <div class="tx-kpi-lbl">Prix moyen</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("pin", 20) }}</div>
+      <div class="tx-kpi-val">{{ '%.0f'|format(k.distance_km) }} km</div>
+      <div class="tx-kpi-lbl">Distance (terminées)</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("calendar", 20) }}</div>
+      <div class="tx-kpi-val">{{ fmt_duree(k.duree_min) or '—' }}</div>
+      <div class="tx-kpi-lbl">Temps de conduite</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("x", 20, "var(--danger)") }}</div>
+      <div class="tx-kpi-val">{{ '%.0f'|format(k.taux_annulation) }} %</div>
+      <div class="tx-kpi-lbl">Annulation ({{ k.nb_annulees }})</div>
+    </div>
+    <div class="fl-card tx-kpi">
+      <div class="tx-kpi-ic">{{ ic.icon("users", 20) }}</div>
+      <div class="tx-kpi-val">{{ k.clients_distincts }}</div>
+      <div class="tx-kpi-lbl">Clients</div>
     </div>
   </div>
 
-  <p class="access-note" style="text-align:left;margin-top:1rem">
-    Les données nécessaires (date, prix, conducteur assigné, statut) sont
-    enregistrées et requêtables par conducteur et par période : le tableau
-    détaillé pourra être ajouté sans restructuration.
-  </p>
+  {# ── CA dans le temps ──────────────────────────────────────────────────── #}
+  {% if stats.ca_series.points %}
+  <div class="fl-card tx-chart">
+    <div class="tx-chart-head">
+      <h3 class="tx-chart-title">{{ ic.icon("chart", 18, "var(--accent)") }} Chiffre d'affaires
+        {% if stats.ca_series.gran == 'mois' %}(par mois){% else %}(par jour){% endif %}</h3>
+    </div>
+    <div class="tx-bars" style="--n:{{ stats.ca_series.points|length }}">
+      {% for p in stats.ca_series.points %}
+      <div class="tx-bar-col" title="{{ p.label }} · {{ '%.2f'|format(p.val) }} €">
+        <div class="tx-bar-wrap">
+          <div class="tx-bar tx-bar-accent"
+               style="height:{{ (p.val / stats.ca_series.max * 100) if stats.ca_series.max else 0 }}%"></div>
+        </div>
+        <div class="tx-bar-lbl">{{ p.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Courses par jour de semaine ───────────────────────────────────────── #}
+  <div class="fl-card tx-chart">
+    <div class="tx-chart-head">
+      <h3 class="tx-chart-title">{{ ic.icon("calendar", 18, "var(--accent)") }} Par jour de la semaine</h3>
+    </div>
+    <div class="tx-bars">
+      {% for j in stats.semaine %}
+      <div class="tx-bar-col" title="{{ j.label }} · {{ j.val }}">
+        <div class="tx-bar-val">{{ j.val or '' }}</div>
+        <div class="tx-bar-wrap">
+          <div class="tx-bar tx-bar-accent2"
+               style="height:{{ (j.val / stats.semaine_max * 100) if stats.semaine_max else 0 }}%"></div>
+        </div>
+        <div class="tx-bar-lbl">{{ j.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# ── Répartition par statut ────────────────────────────────────────────── #}
+  {% if stats.statuts %}
+  <div class="fl-card tx-chart">
+    <div class="tx-chart-head">
+      <h3 class="tx-chart-title">{{ ic.icon("sliders", 18, "var(--accent)") }} Répartition des courses</h3>
+    </div>
+    <div class="tx-statbar">
+      {% for s in stats.statuts %}
+      <div class="tx-statbar-seg st-{{ s.key }}"
+           style="flex:{{ s.val }}" title="{{ s.label }} · {{ s.val }}"></div>
+      {% endfor %}
+    </div>
+    <div class="tx-legend">
+      {% for s in stats.statuts %}
+      <span class="tx-legend-item"><span class="tx-dot st-{{ s.key }}"></span>{{ s.label }}
+        <strong>{{ s.val }}</strong>
+        <span class="tx-legend-pct">{{ '%.0f'|format(100 * s.val / stats.statut_total) }} %</span></span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Top clients ───────────────────────────────────────────────────────── #}
+  {% if stats.top_clients %}
+  <div class="fl-card tx-chart">
+    <div class="tx-chart-head">
+      <h3 class="tx-chart-title">{{ ic.icon("users", 18, "var(--accent)") }} Meilleurs clients</h3>
+    </div>
+    <div class="tx-top">
+      {% for c in stats.top_clients %}
+      <div class="tx-top-row">
+        <div class="tx-top-nom">{{ c.nom }}</div>
+        <div class="tx-top-track">
+          <div class="tx-top-fill"
+               style="width:{{ (c.ca / stats.top_ca_max * 100) if stats.top_ca_max else 0 }}%"></div>
+        </div>
+        <div class="tx-top-meta">{{ euro(c.ca) }} · {{ c.nb }} crs</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% endif %}
 </main>
 {% endblock %}

@@ -35,6 +35,7 @@ from . import webpush
 from .ai import (DEFAULTS, PROVIDER_LABELS, PROVIDERS, AIError, ai_config,
                  extract_course_info)
 from .ai import is_configured as ai_configured
+from .helpers import _MOIS
 from .helpers import (CAL_PLACEHOLDERS, DEFAULT_CAL_NOTES, DEFAULT_CAL_TITLE,
                       NOTIF_PLACEHOLDERS, DEFAULT_NOTIF_BODY,
                       DEFAULT_NOTIF_TITLE, cal_notes_template,
@@ -520,29 +521,221 @@ def mes_courses():
     )
 
 
+# Périodes proposées sur la page Statistiques.
+PERIODES_STATS = [
+    ("mois",         "Ce mois-ci"),       # défaut
+    ("mois_dernier", "Mois dernier"),
+    ("90j",          "90 derniers jours"),
+    ("annee",        "Cette année"),
+    ("perso",        "Personnalisé…"),
+    ("tout",         "Tout l'historique"),
+]
+_PERIODES_MAP = {k for k, _ in PERIODES_STATS}
+
+_JOURS_COURT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+
+
+def _mois_precedent(y: int, m: int):
+    return (y, m - 1) if m > 1 else (y - 1, 12)
+
+
+def _periode_bornes(key: str, du_str: str, au_str: str):
+    """(debut, fin, label) en timestamps pour la période choisie.
+
+    `fin` est une borne haute EXCLUSIVE (ou None = jusqu'à maintenant/sans fin).
+    """
+    from datetime import timedelta
+    now = datetime.now()
+    jour0 = datetime(now.year, now.month, now.day)
+
+    def ts(d):
+        return int(d.timestamp())
+
+    if key == "mois":
+        debut = datetime(now.year, now.month, 1)
+        return ts(debut), None, f"{_MOIS[now.month - 1].capitalize()} {now.year}"
+    if key == "mois_dernier":
+        fin = datetime(now.year, now.month, 1)
+        y, m = _mois_precedent(now.year, now.month)
+        debut = datetime(y, m, 1)
+        return ts(debut), ts(fin), f"{_MOIS[m - 1].capitalize()} {y}"
+    if key == "90j":
+        debut = jour0 - timedelta(days=89)
+        return ts(debut), None, "90 derniers jours"
+    if key == "annee":
+        debut = datetime(now.year, 1, 1)
+        return ts(debut), None, f"Année {now.year}"
+    if key == "perso":
+        debut = fin = None
+        label_du = label_au = None
+        try:
+            if du_str:
+                d = datetime.strptime(du_str, "%Y-%m-%d")
+                debut = ts(d)
+                label_du = d.strftime("%d/%m/%Y")
+        except ValueError:
+            pass
+        try:
+            if au_str:
+                d = datetime.strptime(au_str, "%Y-%m-%d")
+                fin = ts(d + timedelta(days=1))   # inclus le jour « au »
+                label_au = d.strftime("%d/%m/%Y")
+        except ValueError:
+            pass
+        if label_du and label_au:
+            label = f"Du {label_du} au {label_au}"
+        elif label_du:
+            label = f"Depuis le {label_du}"
+        elif label_au:
+            label = f"Jusqu'au {label_au}"
+        else:
+            label = "Période personnalisée"
+        return debut, fin, label
+    return None, None, "Tout l'historique"
+
+
+def _mois_iter(dy, dm, fy, fm):
+    """Itère (année, mois) du premier au dernier mois inclus."""
+    y, m = dy, dm
+    while (y, m) <= (fy, fm):
+        yield y, m
+        y, m = (y, m + 1) if m < 12 else (y + 1, 1)
+
+
+def _calc_stats(conducteur_id: int, debut, fin) -> dict:
+    """Agrège les courses d'un conducteur sur une période : KPIs + séries de
+    graphiques (CA dans le temps, jours de semaine, statuts, top clients)."""
+    from datetime import timedelta
+    db = get_db()
+    sql = ("SELECT quand, prix, statut, distance_km, duree_min, "
+           "client_nom, client_id FROM courses WHERE conducteur_id = ?")
+    params = [conducteur_id]
+    if debut is not None:
+        sql += " AND quand >= ?"
+        params.append(debut)
+    if fin is not None:
+        sql += " AND quand < ?"
+        params.append(fin)
+    rows = db.execute(sql, params).fetchall()
+
+    kpi = {"ca_realise": 0.0, "ca_prevu": 0.0, "nb_total": 0,
+           "nb_terminees": 0, "nb_annulees": 0, "nb_a_venir": 0,
+           "distance_km": 0.0, "duree_min": 0, "prix_moyen": 0.0,
+           "taux_annulation": 0.0, "clients_distincts": 0}
+    par_statut = {s: 0 for s in C.STATUTS}
+    par_semaine = [0] * 7
+    clients = {}                 # nom → {"nb", "ca"}
+    ca_par_jour = {}             # "YYYY-MM-DD" → CA réalisé
+    ts_list = [r["quand"] for r in rows if r["quand"]]
+
+    for r in rows:
+        statut = r["statut"]
+        prix = r["prix"] or 0.0
+        kpi["nb_total"] += 1
+        par_statut[statut] = par_statut.get(statut, 0) + 1
+        if r["quand"]:
+            d = datetime.fromtimestamp(r["quand"])
+            if statut != "annulee":
+                par_semaine[d.weekday()] += 1
+        if statut == "terminee":
+            kpi["nb_terminees"] += 1
+            kpi["ca_realise"] += prix
+            kpi["distance_km"] += (r["distance_km"] or 0.0)
+            kpi["duree_min"] += (r["duree_min"] or 0)
+            if r["quand"]:
+                k = datetime.fromtimestamp(r["quand"]).strftime("%Y-%m-%d")
+                ca_par_jour[k] = ca_par_jour.get(k, 0.0) + prix
+        elif statut in ("a_faire", "en_cours"):
+            kpi["nb_a_venir"] += 1
+            kpi["ca_prevu"] += prix
+        elif statut == "annulee":
+            kpi["nb_annulees"] += 1
+        if statut != "annulee":
+            nom = (r["client_nom"] or "").strip() or "Sans nom"
+            c = clients.setdefault(nom, {"nb": 0, "ca": 0.0})
+            c["nb"] += 1
+            if statut == "terminee":
+                c["ca"] += prix
+
+    if kpi["nb_terminees"]:
+        kpi["prix_moyen"] = kpi["ca_realise"] / kpi["nb_terminees"]
+    if kpi["nb_total"]:
+        kpi["taux_annulation"] = 100.0 * kpi["nb_annulees"] / kpi["nb_total"]
+    kpi["clients_distincts"] = len([n for n in clients if n != "Sans nom"]) \
+        + (1 if "Sans nom" in clients else 0)
+
+    # ── Série « CA réalisé dans le temps » (jour si ≤ 62 jours, sinon mois) ──
+    eff_debut = debut if debut is not None else (min(ts_list) if ts_list else None)
+    eff_fin = (fin - 1) if fin is not None else (max(ts_list) if ts_list else None)
+    ca_series = {"gran": "jour", "points": [], "max": 0.0}
+    if eff_debut is not None and eff_fin is not None and eff_fin >= eff_debut:
+        d0 = datetime.fromtimestamp(eff_debut)
+        d1 = datetime.fromtimestamp(eff_fin)
+        span_jours = (datetime(d1.year, d1.month, d1.day)
+                      - datetime(d0.year, d0.month, d0.day)).days
+        if span_jours <= 62:
+            jour = datetime(d0.year, d0.month, d0.day)
+            borne = datetime(d1.year, d1.month, d1.day)
+            while jour <= borne:
+                k = jour.strftime("%Y-%m-%d")
+                ca_series["points"].append(
+                    {"label": jour.strftime("%d/%m"), "val": ca_par_jour.get(k, 0.0)})
+                jour += timedelta(days=1)
+        else:
+            ca_series["gran"] = "mois"
+            ca_par_mois = {}
+            for k, v in ca_par_jour.items():
+                ca_par_mois[k[:7]] = ca_par_mois.get(k[:7], 0.0) + v
+            mois = list(_mois_iter(d0.year, d0.month, d1.year, d1.month))
+            if len(mois) > 24:            # garde les 24 derniers mois (lisibilité)
+                mois = mois[-24:]
+            for (y, m) in mois:
+                k = f"{y:04d}-{m:02d}"
+                ca_series["points"].append(
+                    {"label": f"{m:02d}/{str(y)[2:]}", "val": ca_par_mois.get(k, 0.0)})
+        ca_series["max"] = max((p["val"] for p in ca_series["points"]), default=0.0)
+
+    statut_ordre = [("terminee", "Terminées"), ("en_cours", "En cours"),
+                    ("a_faire", "À faire"), ("annulee", "Annulées")]
+    statuts = [{"key": k, "label": lbl, "val": par_statut.get(k, 0)}
+               for k, lbl in statut_ordre if par_statut.get(k, 0)]
+
+    top_clients = sorted(
+        ({"nom": n, "nb": v["nb"], "ca": v["ca"]} for n, v in clients.items()),
+        key=lambda c: (c["ca"], c["nb"]), reverse=True)[:6]
+
+    return {
+        "kpi": kpi,
+        "ca_series": ca_series,
+        "semaine": [{"label": _JOURS_COURT[i], "val": par_semaine[i]} for i in range(7)],
+        "semaine_max": max(par_semaine) if any(par_semaine) else 0,
+        "statuts": statuts,
+        "statut_total": sum(s["val"] for s in statuts),
+        "top_clients": top_clients,
+        "top_ca_max": max((c["ca"] for c in top_clients), default=0.0),
+        "vide": kpi["nb_total"] == 0,
+    }
+
+
 @main_bp.route("/mes-stats")
 @login_required
 def mes_stats():
-    """Tableau de bord personnel du conducteur effectif (cahier §6.7)."""
+    """Tableau de bord statistique du conducteur effectif (cahier §6.7)."""
     compte = current_compte()
-    apercu = _apercu_stats(compte["id"])
+    periode = request.args.get("p") or "mois"
+    if periode not in _PERIODES_MAP:
+        periode = "mois"
+    du = (request.args.get("du") or "").strip()
+    au = (request.args.get("au") or "").strip()
+    debut, fin, periode_label = _periode_bornes(periode, du, au)
+    stats = _calc_stats(compte["id"], debut, fin)
     return render_template(
         "mes_stats.html", compte=compte,
-        is_super_admin=is_super_admin(), apercu=apercu,
+        is_super_admin=is_super_admin(), stats=stats,
+        periodes=PERIODES_STATS, periode_actif=periode,
+        periode_label=periode_label, du=du, au=au,
+        fmt_duree=maps.fmt_duree,
     )
-
-
-def _apercu_stats(conducteur_id: int) -> dict:
-    """Agrégat minimal du mois en cours (structure prête, détail à venir §6.7)."""
-    now = datetime.now()
-    debut_mois = int(datetime(now.year, now.month, 1).timestamp())
-    row = get_db().execute(
-        "SELECT COUNT(*) AS n, "
-        "COALESCE(SUM(CASE WHEN statut = 'terminee' THEN prix END), 0) AS ca "
-        "FROM courses WHERE conducteur_id = ? AND quand >= ? AND statut != 'annulee'",
-        (conducteur_id, debut_mois),
-    ).fetchone()
-    return {"mois": now.strftime("%m/%Y"), "nb_courses": row["n"], "ca": row["ca"]}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
