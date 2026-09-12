@@ -584,54 +584,20 @@ def api_clients_search():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Conversion d'un lien Google Maps (même court) en lien Waze — résolu côté
-# serveur (suit la redirection des liens maps.app.goo.gl / goo.gl).
+# Conversion d'un lien Google Maps (même court) en lien Waze — la résolution
+# (suivi de redirection, extraction des coords / du nom) vit dans maps.py.
 # ─────────────────────────────────────────────────────────────────────────────
-def _extraire_coords(*textes):
-    import re
-    for t in textes:
-        if not t:
-            continue
-        m = (re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', t)
-             or re.search(r'!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', t)
-             or re.search(r'[?&](?:q|query|ll|destination|center|daddr)='
-                          r'(-?\d+\.\d+),\s*(-?\d+\.\d+)', t)
-             or re.search(r'(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})', t))
-        if m:
-            return m.group(1), m.group(2)
-    return None
-
-
 @main_bp.get("/api/maps-waze")
 @login_required
 def api_maps_waze():
-    """Résout un lien Google Maps → lien Waze (ll= si coords, sinon q= adresse)."""
-    import re
-    from urllib.parse import urlparse, quote_plus, unquote
-    u = (request.args.get("u") or "").strip()
-    p = urlparse(u)
-    if p.scheme not in ("http", "https"):
-        return jsonify(waze=None)
-    host = (p.hostname or "").lower()
-    # Anti-SSRF : on n'autorise que les domaines Google/Maps.
-    if not (host.endswith("goo.gl") or host.endswith("google.com")
-            or ".google." in host or host.endswith("g.co")):
-        return jsonify(waze=None)
-    try:
-        import requests
-        r = requests.get(u, allow_redirects=True, timeout=8,
-                         headers={"User-Agent": "Mozilla/5.0 (VTC)"})
-        final, text = r.url, (r.text or "")[:20000]
-    except Exception:
-        return jsonify(waze=None)
-    co = _extraire_coords(final, text)
-    if co:
-        return jsonify(waze=f"https://waze.com/ul?ll={co[0]},{co[1]}&navigate=yes")
-    m = re.search(r'/maps/place/([^/@]+)', final)
-    if m:
-        nom = unquote(m.group(1)).replace("+", " ").strip()
-        if nom:
-            return jsonify(waze=f"https://waze.com/ul?q={quote_plus(nom)}&navigate=yes")
+    """Résout un lien Google Maps → lien Waze (ll= si coords, sinon q= lieu)."""
+    from urllib.parse import quote_plus
+    info = maps.resolve_maps(request.args.get("u") or "")
+    if info.get("coords"):
+        lat, lon = info["coords"]
+        return jsonify(waze=f"https://waze.com/ul?ll={lat},{lon}&navigate=yes")
+    if info.get("q"):
+        return jsonify(waze=f"https://waze.com/ul?q={quote_plus(info['q'])}&navigate=yes")
     return jsonify(waze=None)
 
 

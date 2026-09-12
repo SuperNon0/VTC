@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import logging
 import math
+import re
+from urllib.parse import unquote, urlparse
 
 import requests
 
@@ -73,9 +75,69 @@ def _geocode_nominatim(adresse: str):
         return None
 
 
+# ── Liens Google Maps (même courts) → coordonnées / nom de lieu ──────────────
+def _extraire_coords(*textes):
+    """Cherche des coordonnées (lat, lon) dans des URL/HTML Google Maps."""
+    for t in textes:
+        if not t:
+            continue
+        m = (re.search(r'@(-?\d+\.\d+),(-?\d+\.\d+)', t)
+             or re.search(r'!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)', t)
+             or re.search(r'[?&](?:q|query|ll|destination|center|daddr)='
+                          r'(-?\d+\.\d+),\s*(-?\d+\.\d+)', t)
+             or re.search(r'(-?\d{1,3}\.\d{4,}),(-?\d{1,3}\.\d{4,})', t))
+        if m:
+            return m.group(1), m.group(2)
+    return None
+
+
+def _lien_google_maps(url: str) -> bool:
+    p = urlparse(url or "")
+    if p.scheme not in ("http", "https"):
+        return False
+    host = (p.hostname or "").lower()
+    return (host.endswith("goo.gl") or host.endswith("google.com")
+            or ".google." in host or host.endswith("g.co"))
+
+
+def resolve_maps(url: str) -> dict:
+    """Résout un lien Google Maps (même court) : suit la redirection et renvoie
+    {'coords': (lat, lon)} ou {'q': 'nom du lieu'} ou {}. Domaines Google seuls."""
+    url = (url or "").strip()
+    if not _lien_google_maps(url):
+        return {}
+    try:
+        r = requests.get(url, allow_redirects=True, timeout=_TIMEOUT,
+                         headers={"User-Agent": _UA})
+        final, text = r.url, (r.text or "")[:20000]
+    except requests.RequestException as exc:
+        log.info("Résolution lien Maps échouée : %s", exc)
+        return {}
+    co = _extraire_coords(final, text)
+    if co:
+        try:
+            return {"coords": (float(co[0]), float(co[1]))}
+        except ValueError:
+            return {}
+    m = re.search(r'/maps/place/([^/@]+)', final)
+    if m:
+        nom = unquote(m.group(1)).replace("+", " ").strip()
+        if nom:
+            return {"q": nom}
+    return {}
+
+
 def _geocode(adresse: str):
     adresse = (adresse or "").strip()
     if not adresse:
+        return None
+    # Lien Google Maps : on le résout en coordonnées (ou en nom de lieu géocodé).
+    if adresse[:4].lower() == "http":
+        info = resolve_maps(adresse)
+        if info.get("coords"):
+            return info["coords"]
+        if info.get("q"):
+            return _geocode_ban(info["q"]) or _geocode_nominatim(info["q"])
         return None
     return _geocode_ban(adresse) or _geocode_nominatim(adresse)
 
