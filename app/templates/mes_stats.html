@@ -106,10 +106,12 @@
       {% for p in stats.ca_series.points %}
       <div class="tx-bar-col" title="{{ p.label }} · {{ '%.2f'|format(p.val) }} €">
         <div class="tx-bar-wrap">
+          {% if p.val %}
           <div class="tx-bar tx-bar-accent"
                style="height:{{ (p.val / stats.ca_series.max * 100) if stats.ca_series.max else 0 }}%"></div>
+          {% endif %}
         </div>
-        <div class="tx-bar-lbl">{{ p.label }}</div>
+        <div class="tx-bar-lbl">{% if loop.index0 % stats.ca_series.step == 0 %}{{ p.label }}{% endif %}</div>
       </div>
       {% endfor %}
     </div>
@@ -126,8 +128,10 @@
       <div class="tx-bar-col" title="{{ j.label }} · {{ j.val }}">
         <div class="tx-bar-val">{{ j.val or '' }}</div>
         <div class="tx-bar-wrap">
+          {% if j.val %}
           <div class="tx-bar tx-bar-accent2"
                style="height:{{ (j.val / stats.semaine_max * 100) if stats.semaine_max else 0 }}%"></div>
+          {% endif %}
         </div>
         <div class="tx-bar-lbl">{{ j.label }}</div>
       </div>

@@ -694,6 +694,11 @@ def _calc_stats(conducteur_id: int, debut, fin) -> dict:
                 ca_series["points"].append(
                     {"label": f"{m:02d}/{str(y)[2:]}", "val": ca_par_mois.get(k, 0.0)})
         ca_series["max"] = max((p["val"] for p in ca_series["points"]), default=0.0)
+    # N'affiche qu'une étiquette d'axe sur `step` (≈ 8 max) pour éviter qu'elles
+    # se chevauchent quand il y a beaucoup de jours.
+    import math
+    n_pts = len(ca_series["points"])
+    ca_series["step"] = max(1, math.ceil(n_pts / 8)) if n_pts else 1
 
     statut_ordre = [("terminee", "Terminées"), ("en_cours", "En cours"),
                     ("a_faire", "À faire"), ("annulee", "Annulées")]

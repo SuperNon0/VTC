@@ -252,6 +252,7 @@
   overflow-x: auto;
   scrollbar-width: thin;
   padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);   /* ligne de base du graphe */
 }
 .tx-bars::-webkit-scrollbar { height: 4px; }
 .tx-bars::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -274,7 +275,7 @@
 }
 .tx-bar {
   width: 100%;
-  min-height: 2px;
+  min-height: 3px;          /* seules les valeurs > 0 sont rendues (cf. template) */
   border-radius: 4px 4px 0 0;
   transition: height 0.3s ease;
 }
