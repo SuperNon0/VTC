@@ -626,60 +626,68 @@ def _calc_stats(conducteur_id: int, debut, fin) -> dict:
     par_semaine = [0] * 7
     clients = {}                 # nom → {"nb", "ca"}
     ca_par_jour = {}             # "YYYY-MM-DD" → CA réalisé
-    ts_list = [r["quand"] for r in rows if r["quand"]]
+    done_ts = []                 # horodatages des courses RÉALISÉES (pour l'axe)
 
     for r in rows:
         statut = r["statut"]
         prix = r["prix"] or 0.0
         kpi["nb_total"] += 1
         par_statut[statut] = par_statut.get(statut, 0) + 1
-        if r["quand"]:
-            d = datetime.fromtimestamp(r["quand"])
-            if statut != "annulee":
-                par_semaine[d.weekday()] += 1
         if statut == "terminee":
             kpi["nb_terminees"] += 1
             kpi["ca_realise"] += prix
             kpi["distance_km"] += (r["distance_km"] or 0.0)
             kpi["duree_min"] += (r["duree_min"] or 0)
+            # Les graphiques « réalisé » (CA par jour + jour de semaine) ne
+            # comptent QUE les courses effectivement faites (terminées), jamais
+            # les courses seulement planifiées (à faire) → cohérent avec le CA.
             if r["quand"]:
-                k = datetime.fromtimestamp(r["quand"]).strftime("%Y-%m-%d")
+                d = datetime.fromtimestamp(r["quand"])
+                par_semaine[d.weekday()] += 1
+                k = d.strftime("%Y-%m-%d")
                 ca_par_jour[k] = ca_par_jour.get(k, 0.0) + prix
+                done_ts.append(r["quand"])
+            # Clients : on agrège les courses RÉALISÉES par nom de client (les
+            # courses sans nom ne sont pas un « client » identifiable).
+            nom = (r["client_nom"] or "").strip()
+            if nom:
+                c = clients.setdefault(nom, {"nb": 0, "ca": 0.0})
+                c["nb"] += 1
+                c["ca"] += prix
         elif statut in ("a_faire", "en_cours"):
             kpi["nb_a_venir"] += 1
             kpi["ca_prevu"] += prix
         elif statut == "annulee":
             kpi["nb_annulees"] += 1
-        if statut != "annulee":
-            nom = (r["client_nom"] or "").strip() or "Sans nom"
-            c = clients.setdefault(nom, {"nb": 0, "ca": 0.0})
-            c["nb"] += 1
-            if statut == "terminee":
-                c["ca"] += prix
 
     if kpi["nb_terminees"]:
         kpi["prix_moyen"] = kpi["ca_realise"] / kpi["nb_terminees"]
     if kpi["nb_total"]:
         kpi["taux_annulation"] = 100.0 * kpi["nb_annulees"] / kpi["nb_total"]
-    kpi["clients_distincts"] = len([n for n in clients if n != "Sans nom"]) \
-        + (1 if "Sans nom" in clients else 0)
+    kpi["clients_distincts"] = len(clients)
 
     # ── Série « CA réalisé dans le temps » (jour si ≤ 62 jours, sinon mois) ──
-    eff_debut = debut if debut is not None else (min(ts_list) if ts_list else None)
-    eff_fin = (fin - 1) if fin is not None else (max(ts_list) if ts_list else None)
+    # L'axe se cale sur les courses RÉALISÉES (pas les courses planifiées), pour
+    # ne pas afficher une longue traîne vide jusqu'à la prochaine course prévue.
+    eff_debut = debut if debut is not None else (min(done_ts) if done_ts else None)
+    eff_fin = (fin - 1) if fin is not None else (max(done_ts) if done_ts else None)
     ca_series = {"gran": "jour", "points": [], "max": 0.0}
     if eff_debut is not None and eff_fin is not None and eff_fin >= eff_debut:
         d0 = datetime.fromtimestamp(eff_debut)
         d1 = datetime.fromtimestamp(eff_fin)
         span_jours = (datetime(d1.year, d1.month, d1.day)
                       - datetime(d0.year, d0.month, d0.day)).days
+        # Dans un même mois calendaire, l'étiquette = juste le numéro du jour
+        # (« 11 », « 12 ») : compact et sans chevauchement entre jours voisins.
+        meme_mois = (d0.year, d0.month) == (d1.year, d1.month)
         if span_jours <= 62:
             jour = datetime(d0.year, d0.month, d0.day)
             borne = datetime(d1.year, d1.month, d1.day)
             while jour <= borne:
                 k = jour.strftime("%Y-%m-%d")
+                lbl = str(jour.day) if meme_mois else jour.strftime("%d/%m")
                 ca_series["points"].append(
-                    {"label": jour.strftime("%d/%m"), "val": ca_par_jour.get(k, 0.0)})
+                    {"label": lbl, "val": ca_par_jour.get(k, 0.0)})
                 jour += timedelta(days=1)
         else:
             ca_series["gran"] = "mois"
@@ -694,11 +702,20 @@ def _calc_stats(conducteur_id: int, debut, fin) -> dict:
                 ca_series["points"].append(
                     {"label": f"{m:02d}/{str(y)[2:]}", "val": ca_par_mois.get(k, 0.0)})
         ca_series["max"] = max((p["val"] for p in ca_series["points"]), default=0.0)
-    # N'affiche qu'une étiquette d'axe sur `step` (≈ 8 max) pour éviter qu'elles
-    # se chevauchent quand il y a beaucoup de jours.
+    # Étiquettes d'axe : on met la date SOUS chaque barre qui a une valeur (donc
+    # parfaitement alignée avec la barre visible). Si beaucoup de jours ont une
+    # valeur, on retombe sur un affichage espacé (1 étiquette sur N) pour éviter
+    # le chevauchement.
     import math
-    n_pts = len(ca_series["points"])
-    ca_series["step"] = max(1, math.ceil(n_pts / 8)) if n_pts else 1
+    pts = ca_series["points"]
+    nonzero = [i for i, p in enumerate(pts) if p["val"]]
+    if 0 < len(nonzero) <= 12:
+        montrer = set(nonzero)
+    else:
+        step = max(1, math.ceil(len(pts) / 8)) if pts else 1
+        montrer = set(range(0, len(pts), step))
+    for i, p in enumerate(pts):
+        p["lab"] = p["label"] if i in montrer else ""
 
     statut_ordre = [("terminee", "Terminées"), ("en_cours", "En cours"),
                     ("a_faire", "À faire"), ("annulee", "Annulées")]
