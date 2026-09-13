@@ -44,7 +44,12 @@
 {% endblock %}
 
 {% block content %}
-  {% block app_content %}{% endblock %}
+  {# App-shell : SEULE cette zone défile ; le document, lui, ne défile pas (voir
+     app.css). La barre du bas reste ainsi en flux normal et ne peut pas
+     « décrocher » sur iOS pendant le défilement inertiel. #}
+  <div class="app-scroll">
+    {% block app_content %}{% endblock %}
+  </div>
 
   {# ── Barre de navigation en bas (redirections principales) ─────────────── #}
   {% if session.get('compte_id') %}

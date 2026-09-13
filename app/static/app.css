@@ -394,30 +394,41 @@
 /* ═════════════════════════════════════════════════════════════════════════
    11. Barre de navigation en bas (mobile-first) + menu « Plus ».
    ═════════════════════════════════════════════════════════════════════════ */
-/* Recette reprise d'un projet éprouvé (bibliothèque de films) où la barre du
-   bas ne bug jamais. Deux points essentiels par rapport aux essais précédents :
+/* ── App-shell : le seul montage vraiment fiable sur iOS PWA ───────────────
+   Les essais précédents gardaient la barre en `position: fixed`. Sur iOS, un
+   élément fixe « décroche » de façon INTERMITTENTE pendant le défilement
+   inertiel et reste peint au milieu de l'écran (bug signalé « revient de temps
+   en temps »). Aucune astuce CSS (overflow-x, GPU, 100vh…) ne le corrige de
+   façon déterministe tant que la barre reste fixe au-dessus d'un document qui
+   défile.
 
-   1) La base pose `overflow-x: hidden` sur html/body. Sur iOS, un overflow
-      (autre que visible) sur la RACINE fait « décrocher » les éléments
-      position:fixed pendant le défilement (la barre reste coincée au milieu).
-      `overflow-x: clip` empêche le débordement horizontal SANS créer ce
-      conteneur de défilement → corrige le bug. Là où `clip` n'est pas supporté
-      (vieux Safari), la déclaration est ignorée et on garde l'existant : aucun
-      risque de régression.
-   2) Pas de `100dvh` : la hauteur « dynamique » change quand Safari masque ses
-      barres au défilement, ce qui reflow la page et fait sauter la barre fixe.
-      `100vh` (statique) suffit à remplir l'écran sur les pages courtes. */
-html { overflow-x: clip; }
+   Solution : le DOCUMENT ne défile plus. `body` est une colonne flex de la
+   hauteur de l'écran ; seule la zone `.app-scroll` défile ; la barre du bas est
+   un simple enfant flex en bas de la colonne (plus jamais `position: fixed`).
+   Comme la barre n'est plus au-dessus d'un contexte de défilement, elle ne peut
+   physiquement plus décrocher.
+
+   `height: 100%` (et non `100vh/100dvh`) : en mode PWA autonome il n'y a pas de
+   barres Safari qui apparaissent/disparaissent, 100% remplit l'écran de façon
+   stable sans reflow. */
+html { height: 100%; }
 body.has-bottomnav {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;            /* le document ne défile pas */
+  padding-bottom: 0;           /* la barre gère elle-même la safe-area du bas */
+}
+body.has-bottomnav > .app-scroll {
+  flex: 1 1 auto;
+  min-height: 0;               /* indispensable pour qu'un enfant flex défile */
+  overflow-y: auto;
   overflow-x: clip;
-  padding-bottom: calc(72px + env(safe-area-inset-bottom));
-  min-height: 100vh;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bottomnav {
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  z-index: 60;
+  flex: 0 0 auto;              /* toujours en bas de la colonne, en flux normal */
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
