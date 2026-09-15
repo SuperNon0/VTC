@@ -309,7 +309,9 @@ def client_adresses(row) -> list:
 
 def _normaliser_adresses(raw) -> list:
     out = []
-    for it in (raw or []):
+    if not isinstance(raw, (list, tuple)):   # JSON mal formé (nombre, objet…) → ignoré
+        return out
+    for it in raw:
         if isinstance(it, dict):
             adresse = (it.get("adresse") or "").strip()
             label = (it.get("label") or "").strip()

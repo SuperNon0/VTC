@@ -552,6 +552,10 @@ document.querySelector('form.tx-form').addEventListener('submit', function () {
     // Champ « note » : on N'ajoute PAS la ville (ce n'est pas une adresse).
     if (inp && !estNote(field)) inp.value = combineAdr('', inp.value.trim(), villeNom(field));
   });
+  // Anti double-soumission : désactive le bouton (évite de créer 2 courses
+  // si on tape deux fois). L'envoi est déjà lancé, il aboutit normalement.
+  var b = this.querySelector('button[type="submit"]');
+  if (b) { b.disabled = true; b.textContent = 'Enregistrement…'; }
 });
 
 // ── Bascule « Note » (le champ est une note libre, pas une adresse) ──────────

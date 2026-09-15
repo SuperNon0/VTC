@@ -55,6 +55,25 @@ config_bp = Blueprint("config", __name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Fiabilité SQLite : laisse une écriture ATTENDRE (jusqu'à 5 s) qu'un verrou se
+# libère au lieu d'échouer aussitôt (« database is locked »). Sans ça, deux
+# écritures qui se croisent (ex. une estimation en arrière-plan pendant une autre
+# requête) peuvent perdre l'une des deux. Posé à chaque requête ET dans les tâches
+# de fond (_en_fond). N.B. la base (`base/`) est verrouillée, on agit côté app.
+# ─────────────────────────────────────────────────────────────────────────────
+def _sqlite_fiabiliser() -> None:
+    try:
+        get_db().execute("PRAGMA busy_timeout = 5000")
+    except Exception:                       # jamais bloquant
+        pass
+
+
+@main_bp.before_app_request
+def _avant_requete():
+    _sqlite_fiabiliser()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Contexte partagé : les réglages métier exposés à tous les templates de l'app.
 # ─────────────────────────────────────────────────────────────────────────────
 @main_bp.app_context_processor
@@ -490,6 +509,7 @@ def _en_fond(fn) -> None:
 
     def run():
         with app.app_context():
+            _sqlite_fiabiliser()                    # attend le verrou au lieu d'échouer
             try:
                 fn()
             except Exception:                       # best-effort : jamais bloquant
