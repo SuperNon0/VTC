@@ -67,14 +67,15 @@ def creer_course(data: dict, createur_id: int) -> int:
     cur = db.execute(
         """INSERT INTO courses
            (client_nom, client_tel, depart, arrivee, quand, prix, prix_source,
-            tarif_id, distance_km, duree_min, statut, createur_id, conducteur_id,
-            client_id, notes, cree, maj)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            tarif_id, distance_km, duree_min, depart_note, arrivee_note, statut,
+            createur_id, conducteur_id, client_id, notes, cree, maj)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             data.get("client_nom"), data.get("client_tel"),
             data.get("depart"), data.get("arrivee"), data.get("quand"),
             data.get("prix"), data.get("prix_source"), data.get("tarif_id"),
             data.get("distance_km"), data.get("duree_min"),
+            data.get("depart_note", 0), data.get("arrivee_note", 0),
             data.get("statut", "a_faire"),
             createur_id, data["conducteur_id"], data.get("client_id"),
             data.get("notes"), now, now,
@@ -97,6 +98,7 @@ def update_course(course_id: int, data: dict) -> None:
         """UPDATE courses SET
              client_nom = ?, client_tel = ?, depart = ?, arrivee = ?, quand = ?,
              prix = ?, prix_source = ?, tarif_id = ?, distance_km = ?, duree_min = ?,
+             depart_note = ?, arrivee_note = ?,
              conducteur_id = ?, client_id = ?, notes = ?, maj = ?
            WHERE id = ?""",
         (
@@ -104,6 +106,7 @@ def update_course(course_id: int, data: dict) -> None:
             data.get("depart"), data.get("arrivee"), data.get("quand"),
             data.get("prix"), data.get("prix_source"), data.get("tarif_id"),
             data.get("distance_km"), data.get("duree_min"),
+            data.get("depart_note", 0), data.get("arrivee_note", 0),
             data["conducteur_id"], data.get("client_id"),
             data.get("notes"), int(time.time()), course_id,
         ),
@@ -426,6 +429,14 @@ def ensure_schema() -> None:
                 db.execute(f"ALTER TABLE tarifs ADD COLUMN {col} INTEGER")
         if "bidirectionnel" not in tcols:
             db.execute("ALTER TABLE tarifs ADD COLUMN bidirectionnel INTEGER NOT NULL DEFAULT 0")
+        db.commit()
+    # Courses : champs « note » (départ/arrivée saisis comme note, pas adresse).
+    ccols = {r[1] for r in db.execute("PRAGMA table_info(courses)").fetchall()}
+    if ccols:
+        for col in ("depart_note", "arrivee_note"):
+            if col not in ccols:
+                db.execute(
+                    f"ALTER TABLE courses ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
         db.commit()
 
 

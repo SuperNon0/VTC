@@ -69,7 +69,16 @@
         <option value="">— Ville (ou adresse libre) —</option>
         {% for v in villes %}<option value="{{ v.id }}">{{ v.nom }}</option>{% endfor %}
       </select>
-      <label class="fl-label" for="depart">Adresse de prise en charge</label>
+      <div class="tx-lbl-row">
+        <label class="fl-label" for="depart">Adresse de prise en charge</label>
+        <label class="tx-note-toggle" title="Traiter comme une note libre (pas une adresse) : aucune ville ajoutée, aucune estimation de trajet">
+          <input type="checkbox" name="depart_note" value="1" id="depart_note_cb"
+                 onchange="onNoteToggle('depart')"
+                 {{ 'checked' if crs and crs.depart_note else '' }}>
+          <span class="tx-note-sw"></span>
+          <span class="tx-note-txt">Note</span>
+        </label>
+      </div>
       <div class="tx-ac">
         <input class="tx-input" type="text" name="depart" id="depart" autocomplete="off"
                placeholder="Choisis un lieu de la ville, ou tape une adresse"
@@ -96,7 +105,16 @@
         <option value="">— Ville (ou adresse libre) —</option>
         {% for v in villes %}<option value="{{ v.id }}">{{ v.nom }}</option>{% endfor %}
       </select>
-      <label class="fl-label" for="arrivee">Adresse de dépose</label>
+      <div class="tx-lbl-row">
+        <label class="fl-label" for="arrivee">Adresse de dépose</label>
+        <label class="tx-note-toggle" title="Traiter comme une note libre (pas une adresse) : aucune ville ajoutée, aucune estimation de trajet">
+          <input type="checkbox" name="arrivee_note" value="1" id="arrivee_note_cb"
+                 onchange="onNoteToggle('arrivee')"
+                 {{ 'checked' if crs and crs.arrivee_note else '' }}>
+          <span class="tx-note-sw"></span>
+          <span class="tx-note-txt">Note</span>
+        </label>
+      </div>
       <div class="tx-ac">
         <input class="tx-input" type="text" name="arrivee" id="arrivee" autocomplete="off"
                placeholder="Choisis un lieu de la ville, ou tape une adresse"
@@ -252,6 +270,10 @@ function swapDepartArrivee() {
   _swapVal('depart', 'arrivee');
   _swapVal('depart_lieu_id', 'arrivee_lieu_id');
   _swapVal('ville-depart', 'ville-arrivee');
+  // Inverse aussi l'état « note » des deux champs.
+  var da = document.getElementById('depart_note_cb'), ar = document.getElementById('arrivee_note_cb');
+  if (da && ar) { var t = da.checked; da.checked = ar.checked; ar.checked = t; }
+  onNoteToggle('depart'); onNoteToggle('arrivee');
   autoMatchTarif();
 }
 
@@ -527,14 +549,35 @@ document.addEventListener('click', function (e) {
 document.querySelector('form.tx-form').addEventListener('submit', function () {
   ['depart', 'arrivee'].forEach(function (field) {
     var inp = document.getElementById(field);
-    if (inp) inp.value = combineAdr('', inp.value.trim(), villeNom(field));
+    // Champ « note » : on N'ajoute PAS la ville (ce n'est pas une adresse).
+    if (inp && !estNote(field)) inp.value = combineAdr('', inp.value.trim(), villeNom(field));
   });
 });
+
+// ── Bascule « Note » (le champ est une note libre, pas une adresse) ──────────
+function estNote(field) {
+  var cb = document.getElementById(field + '_note_cb');
+  return !!(cb && cb.checked);
+}
+function onNoteToggle(field) {
+  var note = estNote(field);
+  var inp = document.getElementById(field);
+  var vs = document.getElementById('ville-' + field);
+  // En mode note : la ville n'a pas de sens (pas ajoutée, pas d'estimation).
+  if (vs) { vs.disabled = note; if (note) vs.value = ''; }
+  if (inp) {
+    inp.classList.toggle('is-note', note);
+    inp.placeholder = note ? 'Note libre (ex. « devant la boulangerie »)'
+                           : 'Choisis un lieu de la ville, ou tape une adresse';
+    if (note) closeList(document.getElementById('ac-' + field));
+  }
+}
 
 // Au chargement : si un champ contient déjà une adresse (ex. en modification) et
 // que son menu « ville » est vide, on devine la ville depuis le texte et on la
 // re-sélectionne. Ainsi la ville reste affichée en haut, pas seulement dans l'adresse.
 function devinerVilleDepuisTexte(field) {
+  if (estNote(field)) return;                    // champ « note » : pas de ville
   var inp = document.getElementById(field);
   var vs = document.getElementById('ville-' + field);
   if (!inp || !vs || vs.value) return;          // déjà une ville choisie → on ne touche pas
@@ -547,5 +590,7 @@ function devinerVilleDepuisTexte(field) {
   if (best) vs.value = String(best.id);
 }
 ['depart', 'arrivee'].forEach(devinerVilleDepuisTexte);
+// Synchronise l'état visuel des bascules « Note » au chargement (édition).
+['depart', 'arrivee'].forEach(onNoteToggle);
 </script>
 {% endblock %}

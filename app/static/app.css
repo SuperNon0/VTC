@@ -167,6 +167,51 @@
 .tx-area { resize: vertical; line-height: 1.5; }
 .tx-form { display: block; }
 
+/* --- Bascule « Note » à côté d'un champ adresse -------------------------- */
+.tx-lbl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tx-note-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  flex: 0 0 auto;
+}
+.tx-note-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.tx-note-sw {
+  width: 34px; height: 20px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  flex: 0 0 auto;
+  transition: background 0.15s;
+}
+.tx-note-sw::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.tx-note-toggle input:checked + .tx-note-sw { background: var(--accent); }
+.tx-note-toggle input:checked + .tx-note-sw::after {
+  transform: translateX(14px);
+  background: #0e0f11;
+}
+.tx-note-toggle input:focus-visible + .tx-note-sw {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.tx-note-txt { font-size: 0.7rem; color: var(--muted); font-family: var(--font-mono); }
+.tx-note-toggle input:checked ~ .tx-note-txt { color: var(--accent); }
+/* Champ marqué « note » : bordure en pointillés pour le distinguer. */
+.tx-input.is-note { border-style: dashed; }
+
 /* --- Boutons de lieux fréquents (chips) ---------------------------------- */
 .tx-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
 .tx-chip {

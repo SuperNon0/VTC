@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS courses (
     tarif_id       INTEGER,
     distance_km    REAL,
     duree_min      INTEGER,
+    depart_note    INTEGER NOT NULL DEFAULT 0,   -- 1 = champ « note » libre (pas une adresse)
+    arrivee_note   INTEGER NOT NULL DEFAULT 0,   -- → pas de ville ajoutée, pas d'estimation
     statut         TEXT NOT NULL DEFAULT 'a_faire',
     createur_id    INTEGER NOT NULL,
     conducteur_id  INTEGER NOT NULL,

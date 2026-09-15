@@ -280,6 +280,9 @@ def course_estimer(course_id: int):
         return jsonify(ok=False, error="non autorisé"), 403
     if not (course["depart"] and course["arrivee"]):
         return jsonify(ok=False, error="départ et arrivée requis"), 400
+    if course["depart_note"] or course["arrivee_note"]:
+        return jsonify(ok=False, error="Une des extrémités est une note "
+                       "(pas une adresse) : estimation impossible."), 400
     est, raison = maps.estimate_or_reason(course["depart"], course["arrivee"])
     if not est:
         return jsonify(ok=False, error=raison), 502
@@ -446,10 +449,15 @@ def _lire_course_form(f):
     prix, prix_source, tarif_id = _resoudre_prix(f)
     depart = (f.get("depart") or "").strip() or None
     arrivee = (f.get("arrivee") or "").strip() or None
+    # Champ « note » : le texte est une note libre (repère, consigne…), pas une
+    # adresse → on ne l'utilise pas pour géolocaliser / estimer le trajet.
+    depart_note = 1 if f.get("depart_note") else 0
+    arrivee_note = 1 if f.get("arrivee_note") else 0
 
     # Estimation du trajet (durée + distance) via OpenStreetMap — best-effort.
+    # Impossible si l'une des deux extrémités est une note (pas géolocalisable).
     distance_km = duree_min = None
-    if depart and arrivee:
+    if depart and arrivee and not depart_note and not arrivee_note:
         est = maps.estimate(depart, arrivee)
         if est:
             distance_km, duree_min = est["distance_km"], est["duree_min"]
@@ -459,6 +467,8 @@ def _lire_course_form(f):
         "client_tel": (f.get("client_tel") or "").strip() or None,
         "depart": depart,
         "arrivee": arrivee,
+        "depart_note": depart_note,
+        "arrivee_note": arrivee_note,
         "quand": quand,
         "prix": prix,
         "prix_source": prix_source,
