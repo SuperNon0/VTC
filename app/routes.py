@@ -19,10 +19,11 @@ Réutilise la base par simple import (jamais de modification de `base/`) :
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 
-from flask import (Blueprint, Response, abort, flash, jsonify, redirect,
-                   render_template, request, session, url_for)
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
+                   redirect, render_template, request, session, url_for)
 
 from panel.auth import (current_compte, get_compte, is_super_admin,
                         login_required, super_admin_required)
@@ -409,6 +410,7 @@ def course_modifier_save(course_id: int):
         flash(erreur, "error")
         return redirect(url_for("main.course_modifier", course_id=course_id))
     C.update_course(course_id, data)
+    _estimer_en_fond(course_id, data)   # re-estime le trajet en arrière-plan
     flash("Course modifiée ✓", "success")
     return redirect(url_for("main.course_detail", course_id=course_id))
 
@@ -454,13 +456,10 @@ def _lire_course_form(f):
     depart_note = 1 if f.get("depart_note") else 0
     arrivee_note = 1 if f.get("arrivee_note") else 0
 
-    # Estimation du trajet (durée + distance) via OpenStreetMap — best-effort.
-    # Impossible si l'une des deux extrémités est une note (pas géolocalisable).
+    # L'estimation du trajet (appels réseau lents) N'EST PLUS faite ici : elle se
+    # fait en arrière-plan après l'enregistrement (voir _estimer_en_fond), pour
+    # que l'ajout/la modification d'une course soit instantané.
     distance_km = duree_min = None
-    if depart and arrivee and not depart_note and not arrivee_note:
-        est = maps.estimate(depart, arrivee)
-        if est:
-            distance_km, duree_min = est["distance_km"], est["duree_min"]
 
     return {
         "client_nom": (f.get("client_nom") or "").strip() or None,
@@ -481,6 +480,41 @@ def _lire_course_form(f):
     }, None
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Tâches lentes (réseau) déportées en arrière-plan — l'ajout/la modif d'une
+# course répond instantanément ; l'estimation et la notification suivent.
+# ─────────────────────────────────────────────────────────────────────────────
+def _en_fond(fn) -> None:
+    """Exécute `fn` dans un thread avec un contexte d'application propre."""
+    app = current_app._get_current_object()
+
+    def run():
+        with app.app_context():
+            try:
+                fn()
+            except Exception:                       # best-effort : jamais bloquant
+                app.logger.exception("Tâche d'arrière-plan échouée")
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _estimer_en_fond(course_id: int, data: dict) -> None:
+    """Calcule l'estimation de trajet (appels réseau) hors de la requête."""
+    estimable = (data.get("depart") and data.get("arrivee")
+                 and not data.get("depart_note") and not data.get("arrivee_note"))
+    if not estimable:
+        # Adresse manquante ou « note » : pas d'estimation possible → on efface une
+        # éventuelle estimation devenue caduque (cas d'une modification).
+        C.set_estimation(course_id, None, None)
+        return
+
+    def job():
+        est = maps.estimate(data["depart"], data["arrivee"])
+        C.set_estimation(course_id, est["distance_km"], est["duree_min"]) if est else None
+
+    _en_fond(job)
+
+
 @main_bp.post("/api/courses")
 @login_required
 def api_creer_course():
@@ -493,11 +527,14 @@ def api_creer_course():
     data["statut"] = "a_faire"
     course_id = C.creer_course(data, compte["id"])
 
-    # Notification push au conducteur assigné (jamais au créateur) — §5/§6.5.
-    webpush.notifier_conducteur(
-        data["conducteur_id"], notif_titre(data), notif_corps(data),
-        url=url_for("main.course_detail", course_id=course_id),
-    )
+    # Estimation + notification push au conducteur assigné (jamais au créateur,
+    # §5/§6.5) : lancées en arrière-plan pour que l'ajout soit instantané.
+    _estimer_en_fond(course_id, data)
+    titre, corps = notif_titre(data), notif_corps(data)
+    url = url_for("main.course_detail", course_id=course_id)
+    _en_fond(lambda: webpush.notifier_conducteur(
+        data["conducteur_id"], titre, corps, url=url))
+
     flash("Course créée et assignée ✓", "success")
     return redirect(url_for("main.dashboard"))
 
