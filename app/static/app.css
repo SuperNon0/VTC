@@ -355,10 +355,13 @@
 .tx-legend-item strong { color: var(--text); font-weight: 600; }
 .tx-legend-pct { color: var(--muted); opacity: 0.8; }
 .tx-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.st-terminee { background: var(--accent-2); }
-.st-en_cours { background: var(--accent-3); }
-.st-a_faire  { background: var(--accent); }
-.st-annulee  { background: var(--danger); }
+/* Couleurs de statut RÉSERVÉES aux widgets de stats (pastilles + barre empilée).
+   NE PAS cibler « .st-a_faire » seul : les cartes de course portent aussi cette
+   classe et deviendraient toutes colorées (fond jaune). */
+.tx-statbar-seg.st-terminee, .tx-dot.st-terminee { background: var(--accent-2); }
+.tx-statbar-seg.st-en_cours, .tx-dot.st-en_cours { background: var(--accent-3); }
+.tx-statbar-seg.st-a_faire,  .tx-dot.st-a_faire  { background: var(--accent); }
+.tx-statbar-seg.st-annulee,  .tx-dot.st-annulee  { background: var(--danger); }
 
 /* Top clients (barres horizontales) */
 .tx-top { display: flex; flex-direction: column; gap: 0.7rem; }

@@ -137,6 +137,18 @@ def _utc_stamp(ts: int) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def _local_stamp(ts: int) -> str:
+    """Horodatage « flottant » (heure locale, SANS suffixe Z).
+
+    L'appli stocke/affiche l'heure des courses en heure locale (naïve). Exporter
+    ce même instant en UTC (avec « Z ») fait DÉCALER l'heure dans le calendrier
+    du téléphone (ex. 19h00 saisi → affiché 21h00). En émettant les mêmes chiffres
+    d'horloge que l'appli, en heure flottante, le calendrier affiche exactement
+    l'heure saisie, quel que soit le fuseau du serveur ou du téléphone.
+    """
+    return datetime.fromtimestamp(ts).strftime("%Y%m%dT%H%M%S")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Notifications Web Push — titre + corps personnalisables (mêmes placeholders)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -272,7 +284,10 @@ def google_calendar_url(course, duree_min: int = 60) -> str:
     params = {
         "action": "TEMPLATE",
         "text": course_titre(course),
-        "dates": f"{_utc_stamp(start)}/{_utc_stamp(end)}",
+        # Heure locale flottante + ctz explicite : Google affiche l'heure saisie
+        # (pas de décalage UTC).
+        "dates": f"{_local_stamp(start)}/{_local_stamp(end)}",
+        "ctz": "Europe/Paris",
         "details": course_description(course),
         "location": course["depart"] or "",
     }
@@ -298,8 +313,8 @@ def course_ics(course, duree_min: int = 60) -> str:
         "BEGIN:VEVENT",
         f"UID:course-{course['id']}@vtc",
         f"DTSTAMP:{now}",
-        f"DTSTART:{_utc_stamp(start)}",
-        f"DTEND:{_utc_stamp(end)}",
+        f"DTSTART:{_local_stamp(start)}",
+        f"DTEND:{_local_stamp(end)}",
         f"SUMMARY:{_ics_escape(course_titre(course))}",
         f"DESCRIPTION:{_ics_escape(course_description(course))}",
         f"LOCATION:{_ics_escape(course['depart'] or '')}",
