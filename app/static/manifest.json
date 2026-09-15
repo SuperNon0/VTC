@@ -1,4 +1,6 @@
 {
+  "id": "/",
+  "lang": "fr",
   "name": "VTC — Gestion des courses",
   "short_name": "VTC",
   "description": "Gestion d'activité taxi/VTC : courses, calendrier, notifications.",
