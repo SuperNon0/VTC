@@ -10,6 +10,8 @@
  */
 
 var CACHE = 'vtc-static-v1';                 // ← changer le suffixe purge l'ancien cache
+var PAGES = 'vtc-pages-v1';                  // dernières pages vues (mode hors ligne)
+var KEEP = [CACHE, PAGES];
 var STATIC_RE = /\.(css|woff2?|ttf|otf|png|svg|jpg|jpeg|webp|ico)$/i;
 
 function estStatiqueMemeOrigine(url) {
@@ -31,7 +33,7 @@ self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
       return Promise.all(keys.map(function (k) {
-        return k === CACHE ? null : caches.delete(k);
+        return KEEP.indexOf(k) === -1 ? caches.delete(k) : null;
       }));
     }).then(function () { return self.clients.claim(); })
   );
@@ -39,12 +41,51 @@ self.addEventListener('activate', function (event) {
 
 // Stale-while-revalidate : sert la version en cache immédiatement (rapide) et
 // rafraîchit en arrière-plan. Uniquement pour les ressources statiques.
+var OFFLINE_HTML =
+  '<!doctype html><html lang="fr"><head><meta charset="utf-8">' +
+  '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+  '<title>Hors ligne</title><style>' +
+  'body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;' +
+  'justify-content:center;gap:14px;background:#0e0f11;color:#f0ede6;' +
+  'font-family:ui-monospace,Menlo,monospace;text-align:center;padding:24px}' +
+  'h1{font-size:1.2rem;margin:0;color:#e8c547}p{color:#6b6f7a;font-size:.9rem;line-height:1.5;margin:0;max-width:300px}' +
+  'button{margin-top:8px;background:#e8c547;color:#0e0f11;border:0;border-radius:10px;' +
+  'padding:.7rem 1.4rem;font:inherit;font-weight:600}</style></head><body>' +
+  '<h1>Pas de connexion</h1><p>Tu es hors ligne et cette page n\'a pas encore été ' +
+  'consultée. Reconnecte-toi pour voir tes courses à jour.</p>' +
+  '<button onclick="location.reload()">Réessayer</button></body></html>';
+
+function reponseOffline() {
+  return new Response(OFFLINE_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
 self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;          // POST/PUT… → réseau direct
   var url;
   try { url = new URL(req.url); } catch (e) { return; }
-  if (!estStatiqueMemeOrigine(url) && !estPoliceGoogle(url)) return;  // pages/api → réseau
+
+  // ── Navigations (pages HTML) : réseau d'abord, cache en secours (hors ligne) ─
+  // En ligne : toujours la version fraîche (et on en garde une copie). Hors ligne :
+  // on réaffiche la dernière page vue, sinon une page « hors ligne ».
+  if (req.mode === 'navigate' && url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(req).then(function (resp) {
+        if (resp && resp.ok) {
+          var copie = resp.clone();
+          caches.open(PAGES).then(function (c) { c.put(req, copie); });
+        }
+        return resp;
+      }).catch(function () {
+        return caches.open(PAGES).then(function (c) {
+          return c.match(req).then(function (hit) { return hit || c.match('/'); });
+        }).then(function (r) { return r || reponseOffline(); });
+      })
+    );
+    return;
+  }
+
+  if (!estStatiqueMemeOrigine(url) && !estPoliceGoogle(url)) return;  // /api → réseau
 
   event.respondWith(
     caches.open(CACHE).then(function (cache) {
