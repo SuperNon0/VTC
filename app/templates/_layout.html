@@ -91,6 +91,21 @@
   </div>
   <div class="adr-toast" id="adr-toast"></div>
 
+  {# ── Aide « ? » : mini pop-up d'explication (globale à toute l'app) ──────── #}
+  <div class="tx-help-sheet" id="help-sheet" hidden>
+    <div class="tx-help-backdrop" onclick="closeHelpSheet()"></div>
+    <div class="tx-help-panel" role="dialog" aria-label="Aide">
+      <div class="tx-help-head">
+        <span class="tx-help-ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+        <span class="tx-help-title" id="help-title"></span>
+      </div>
+      <p class="tx-help-text" id="help-text"></p>
+      <button type="button" class="btn ghost" style="width:100%" onclick="closeHelpSheet()">Compris</button>
+    </div>
+  </div>
+
   <script>
     // Enregistrement du service worker (PWA + Web Push, cahier §7).
     if ('serviceWorker' in navigator) {
@@ -183,12 +198,32 @@
       try { document.execCommand('copy'); } catch (e) { /* ignore */ }
       document.body.removeChild(ta);
     }
-    // Délégation globale : adresses (.tx-adr) et téléphones (.tx-phone).
+    // ── Aide « ? » : ouvre une mini pop-up d'explication ─────────────────────
+    function openHelpSheet(text, title) {
+      var t = document.getElementById('help-title');
+      t.textContent = title || 'À quoi ça sert ?';
+      document.getElementById('help-text').textContent = text || '';
+      var s = document.getElementById('help-sheet');
+      s.hidden = false;
+      requestAnimationFrame(function () { s.classList.add('open'); });
+    }
+    window.closeHelpSheet = function () {
+      var s = document.getElementById('help-sheet');
+      s.classList.remove('open');
+      setTimeout(function () { s.hidden = true; }, 200);
+    };
+
+    // Délégation globale : aide (.tx-help), adresses (.tx-adr) et tél (.tx-phone).
     document.addEventListener('click', function (e) {
+      var h = e.target.closest('.tx-help');
+      if (h) { e.preventDefault(); e.stopPropagation(); openHelpSheet(h.dataset.help, h.dataset.helpTitle); return; }
       var a = e.target.closest('.tx-adr');
       if (a) { e.preventDefault(); e.stopPropagation(); openAdrSheet(a.dataset.adr || a.textContent); return; }
       var p = e.target.closest('.tx-phone');
       if (p && p.dataset.tel) { e.preventDefault(); e.stopPropagation(); window.location.href = 'tel:' + p.dataset.tel; }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeHelpSheet();
     });
   </script>
   {% endif %}

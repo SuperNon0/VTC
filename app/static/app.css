@@ -353,6 +353,51 @@
   margin: 0.3rem 0 0.8rem;
 }
 .tx-kpi-sheet-exp { font-size: 0.9rem; line-height: 1.5; color: var(--text); margin: 0 0 1.1rem; }
+
+/* --- Aide « ? » : petit bouton + mini pop-up d'explication --------------- */
+.tx-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 22px; height: 22px;
+  padding: 0;
+  margin-left: 0.35rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background 0.15s;
+}
+.tx-help:hover, .tx-help:focus-visible { color: var(--accent); background: var(--surface); outline: none; }
+.tx-help svg { width: 16px; height: 16px; }
+
+.tx-help-sheet { position: fixed; inset: 0; z-index: 260; display: flex; align-items: flex-end; }
+.tx-help-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0; transition: opacity 0.2s;
+}
+.tx-help-sheet.open .tx-help-backdrop { opacity: 1; }
+.tx-help-panel {
+  position: relative;
+  width: 100%;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  padding: 1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+}
+.tx-help-sheet.open .tx-help-panel { transform: translateY(0); }
+.tx-help-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.tx-help-ic { color: var(--accent); display: inline-flex; }
+.tx-help-ic svg { width: 22px; height: 22px; }
+.tx-help-title { font-family: var(--font-serif); font-size: 1.15rem; color: var(--text); }
+.tx-help-text { font-size: 0.92rem; line-height: 1.55; color: var(--text); margin: 0 0 1.1rem; }
 .tx-kpi-val {
   font-family: var(--font-serif);
   font-size: 1.5rem;

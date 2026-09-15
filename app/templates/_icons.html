@@ -38,7 +38,23 @@
 {%- elif name == "plus" -%}<path d="M12 5v14M5 12h14"/>
 {%- elif name == "x" -%}<path d="M18 6 6 18M6 6l12 12"/>
 {%- elif name == "info" -%}<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+{%- elif name == "question" -%}<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
 {%- else -%}<circle cx="12" cy="12" r="9"/>
 {%- endif -%}
 </svg>
+{%- endmacro %}
+
+{# ─────────────────────────────────────────────────────────────────────────────
+   Petit bouton d'aide « ? ». Au clic, ouvre une mini pop-up d'explication
+   (gérée globalement dans _layout.html). Remplace les longs textes explicatifs.
+
+     {% import "_icons.html" as ic %}
+     Nom de la fonctionnalité {{ ic.help("Explication courte de ce que ça fait.") }}
+     {{ ic.help("Explication…", "Titre optionnel") }}
+──────────────────────────────────────────────────────────────────────────── #}
+{% macro help(text, title="") -%}
+<button type="button" class="tx-help" aria-label="Aide : {{ title or 'en savoir plus' }}"
+        data-help="{{ text }}"{% if title %} data-help-title="{{ title }}"{% endif %}>
+  {{ icon("question", 16) }}
+</button>
 {%- endmacro %}
