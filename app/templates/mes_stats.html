@@ -6,6 +6,17 @@
 {% set k = stats.kpi %}
 {% macro euro(v) %}{{ '%.2f'|format(v or 0) }} €{% endmacro %}
 
+{# Case indicateur cliquable → ouvre une fiche explicative. #}
+{% macro kpi(name, color, val, lbl, explain, accent=false) %}
+<button type="button" class="fl-card tx-kpi tx-kpi-click{{ ' tx-kpi-accent' if accent else '' }}"
+        data-explain="{{ explain }}">
+  <span class="tx-kpi-info">{{ ic.icon('info', 14) }}</span>
+  <div class="tx-kpi-ic">{{ ic.icon(name, 20, color) }}</div>
+  <div class="tx-kpi-val">{{ val }}</div>
+  <div class="tx-kpi-lbl">{{ lbl }}</div>
+</button>
+{% endmacro %}
+
 {% block app_content %}
 <main class="tx-main">
   <h2 class="fl-title-serif" style="font-size:1.5rem;margin-bottom:.2rem">Mes statistiques</h2>
@@ -46,54 +57,28 @@
   </div>
   {% else %}
 
-  {# ── KPIs ──────────────────────────────────────────────────────────────── #}
+  {# ── KPIs (chaque case s'ouvre pour expliquer le chiffre) ───────────────── #}
   <div class="tx-kpis">
-    <div class="fl-card tx-kpi tx-kpi-accent">
-      <div class="tx-kpi-ic">{{ ic.icon("euro", 20, "var(--accent)") }}</div>
-      <div class="tx-kpi-val">{{ euro(k.ca_realise) }}</div>
-      <div class="tx-kpi-lbl">CA réalisé</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("calendar", 20, "var(--accent-3)") }}</div>
-      <div class="tx-kpi-val">{{ euro(k.ca_prevu) }}</div>
-      <div class="tx-kpi-lbl">CA à venir ({{ k.nb_a_venir }})</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("list", 20) }}</div>
-      <div class="tx-kpi-val">{{ k.nb_total }}</div>
-      <div class="tx-kpi-lbl">Courses</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("check", 20, "var(--accent-2)") }}</div>
-      <div class="tx-kpi-val">{{ k.nb_terminees }}</div>
-      <div class="tx-kpi-lbl">Terminées</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("euro", 20) }}</div>
-      <div class="tx-kpi-val">{{ euro(k.prix_moyen) }}</div>
-      <div class="tx-kpi-lbl">Prix moyen</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("pin", 20) }}</div>
-      <div class="tx-kpi-val">{{ '%.0f'|format(k.distance_km) }} km</div>
-      <div class="tx-kpi-lbl">Distance (terminées)</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("calendar", 20) }}</div>
-      <div class="tx-kpi-val">{{ fmt_duree(k.duree_min) or '—' }}</div>
-      <div class="tx-kpi-lbl">Temps de conduite</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("x", 20, "var(--danger)") }}</div>
-      <div class="tx-kpi-val">{{ '%.0f'|format(k.taux_annulation) }} %</div>
-      <div class="tx-kpi-lbl">Annulation ({{ k.nb_annulees }})</div>
-    </div>
-    <div class="fl-card tx-kpi">
-      <div class="tx-kpi-ic">{{ ic.icon("users", 20) }}</div>
-      <div class="tx-kpi-val">{{ k.clients_distincts }}</div>
-      <div class="tx-kpi-lbl">Clients</div>
-    </div>
+    {{ kpi('euro', 'var(--accent)', euro(k.ca_realise), 'CA réalisé',
+           "Somme des prix de tes courses terminées sur la période — ce que tu as réellement encaissé.", accent=true) }}
+    {{ kpi('calendar', 'var(--accent-3)', euro(k.ca_prevu), 'CA à venir (' ~ k.nb_a_venir ~ ')',
+           "Somme des prix des courses encore à faire ou en cours : un revenu prévu, pas encore encaissé.") }}
+    {{ kpi('list', none, k.nb_total, 'Courses',
+           "Nombre total de courses sur la période, tous statuts confondus (à faire, en cours, terminées, annulées).") }}
+    {{ kpi('check', 'var(--accent-2)', k.nb_terminees, 'Terminées',
+           "Nombre de courses que tu as menées à terme sur la période.") }}
+    {{ kpi('euro', none, euro(k.prix_moyen), 'Prix moyen',
+           "CA réalisé ÷ nombre de courses terminées : le prix moyen d'une course terminée.") }}
+    {{ kpi('pin', none, '%.0f'|format(k.distance_km) ~ ' km', 'Distance (terminées)',
+           "Distance totale estimée de tes courses terminées (uniquement celles qui ont une estimation de trajet).") }}
+    {{ kpi('calendar', none, fmt_duree(k.duree_min) or '—', 'Temps de conduite',
+           "Durée totale estimée de tes courses terminées (temps de trajet cumulé).") }}
+    {{ kpi('x', 'var(--danger)', '%.0f'|format(k.taux_annulation) ~ ' %', 'Annulation (' ~ k.nb_annulees ~ ')',
+           "Part de courses annulées sur le total de la période. Le nombre d'annulées est indiqué entre parenthèses.") }}
+    {{ kpi('users', none, k.clients_distincts, 'Clients',
+           "Nombre de clients différents (avec un nom enregistré) que tu as servis sur la période.") }}
   </div>
+  <p class="tx-hint">{{ ic.icon('info', 13) }} Touche une case ou une barre pour voir le détail.</p>
 
   {# ── CA dans le temps ──────────────────────────────────────────────────── #}
   {% if stats.ca_series.points %}
@@ -104,7 +89,8 @@
     </div>
     <div class="tx-bars" style="--n:{{ stats.ca_series.points|length }}">
       {% for p in stats.ca_series.points %}
-      <div class="tx-bar-col" title="{{ p.label }} · {{ '%.2f'|format(p.val) }} €">
+      <div class="tx-bar-col{% if p.val %} tx-tap{% endif %}"
+           {% if p.val %}data-tip="{{ p.label }} · {{ '%.2f'|format(p.val) }} €"{% endif %}>
         <div class="tx-bar-wrap">
           {% if p.val %}
           <div class="tx-bar tx-bar-accent"
@@ -125,7 +111,8 @@
     </div>
     <div class="tx-bars">
       {% for j in stats.semaine %}
-      <div class="tx-bar-col" title="{{ j.label }} · {{ j.val }}">
+      <div class="tx-bar-col{% if j.val %} tx-tap{% endif %}"
+           {% if j.val %}data-tip="{{ j.label }} · {{ j.val }} course{{ 's' if j.val > 1 else '' }} réalisée{{ 's' if j.val > 1 else '' }}"{% endif %}>
         <div class="tx-bar-val">{{ j.val or '' }}</div>
         <div class="tx-bar-wrap">
           {% if j.val %}
@@ -147,8 +134,9 @@
     </div>
     <div class="tx-statbar">
       {% for s in stats.statuts %}
-      <div class="tx-statbar-seg st-{{ s.key }}"
-           style="flex:{{ s.val }}" title="{{ s.label }} · {{ s.val }}"></div>
+      <div class="tx-statbar-seg tx-tap st-{{ s.key }}"
+           style="flex:{{ s.val }}"
+           data-tip="{{ s.label }} · {{ s.val }} ({{ '%.0f'|format(100 * s.val / stats.statut_total) }} %)"></div>
       {% endfor %}
     </div>
     <div class="tx-legend">
@@ -169,7 +157,8 @@
     </div>
     <div class="tx-top">
       {% for c in stats.top_clients %}
-      <div class="tx-top-row">
+      <div class="tx-top-row tx-tap"
+           data-tip="{{ c.nom }} · {{ euro(c.ca) }} · {{ c.nb }} course{{ 's' if c.nb > 1 else '' }}">
         <div class="tx-top-nom">{{ c.nom }}</div>
         <div class="tx-top-track">
           <div class="tx-top-fill"
@@ -182,6 +171,76 @@
   </div>
   {% endif %}
 
+  {# ── Info-bulle (barres) + fiche explicative (KPI) ──────────────────────── #}
+  <div class="tx-tip" id="tx-tip" hidden></div>
+  <div class="tx-kpi-sheet" id="kpi-sheet" hidden>
+    <div class="tx-kpi-sheet-backdrop" onclick="closeKpiSheet()"></div>
+    <div class="tx-kpi-sheet-panel" role="dialog" aria-label="Détail de l'indicateur">
+      <div class="tx-kpi-sheet-val" id="kpi-sheet-val"></div>
+      <div class="tx-kpi-sheet-lbl" id="kpi-sheet-lbl"></div>
+      <p class="tx-kpi-sheet-exp" id="kpi-sheet-exp"></p>
+      <button type="button" class="btn ghost" style="width:100%" onclick="closeKpiSheet()">Fermer</button>
+    </div>
+  </div>
+
   {% endif %}
 </main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  // ── Info-bulle sur les barres/segments/lignes (au toucher) ──────────────
+  var tip = document.getElementById('tx-tip');
+  var tHide;
+  function showTip(el) {
+    var txt = el.getAttribute('data-tip');
+    if (!txt || !tip) return;
+    tip.textContent = txt;
+    tip.hidden = false;
+    var r = el.getBoundingClientRect();
+    var x = Math.min(Math.max(r.left + r.width / 2, 60), window.innerWidth - 60);
+    tip.style.left = x + 'px';
+    tip.style.top = (r.top - 10) + 'px';
+    requestAnimationFrame(function () { tip.classList.add('show'); });
+    clearTimeout(tHide);
+    tHide = setTimeout(hideTip, 2600);
+  }
+  function hideTip() { if (tip) tip.classList.remove('show'); }
+  function clearActive() {
+    document.querySelectorAll('.tx-tap.active').forEach(function (e) { e.classList.remove('active'); });
+  }
+
+  // ── Fiche explicative d'un indicateur (KPI) ─────────────────────────────
+  var sheet = document.getElementById('kpi-sheet');
+  function openKpi(card) {
+    var val = card.querySelector('.tx-kpi-val'), lbl = card.querySelector('.tx-kpi-lbl');
+    document.getElementById('kpi-sheet-val').textContent = val ? val.textContent.trim() : '';
+    document.getElementById('kpi-sheet-lbl').textContent = lbl ? lbl.textContent.trim() : '';
+    document.getElementById('kpi-sheet-exp').textContent = card.getAttribute('data-explain') || '';
+    sheet.hidden = false;
+    requestAnimationFrame(function () { sheet.classList.add('open'); });
+  }
+  window.closeKpiSheet = function () {
+    sheet.classList.remove('open');
+    setTimeout(function () { sheet.hidden = true; }, 200);
+  };
+
+  document.addEventListener('click', function (e) {
+    var card = e.target.closest('.tx-kpi-click');
+    if (card) { openKpi(card); return; }
+    var el = e.target.closest('.tx-tap[data-tip]');
+    if (el) {
+      clearActive();
+      el.classList.add('active');
+      showTip(el);
+      return;
+    }
+    if (!e.target.closest('#tx-tip')) { hideTip(); clearActive(); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeKpiSheet(); hideTip(); clearActive(); }
+  });
+})();
+</script>
 {% endblock %}
