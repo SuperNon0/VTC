@@ -373,6 +373,8 @@
   transition: color 0.15s, background 0.15s;
 }
 .tx-help:hover, .tx-help:focus-visible { color: var(--accent); background: var(--surface); outline: none; }
+/* Titre + bouton « ? » alignés sur la même ligne. */
+.tx-h-help { display: flex; align-items: center; }
 .tx-help svg { width: 16px; height: 16px; }
 
 .tx-help-sheet { position: fixed; inset: 0; z-index: 260; display: flex; align-items: flex-end; }

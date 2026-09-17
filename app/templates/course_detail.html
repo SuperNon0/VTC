@@ -65,17 +65,13 @@
 
   {# ── Mise à jour du statut : ICI, dans l'app (pas sur le calendrier natif) ── #}
   <section class="fl-card" style="margin-top:1rem">
-    <div class="fl-label" style="margin-bottom:.5rem">Statut de la course</div>
+    <div class="fl-label tx-h-help" style="margin-bottom:.5rem">Statut de la course{{ ic.help("Le statut se change ici, dans l'application. L'événement que tu as ajouté au calendrier de ton téléphone, lui, reste figé (on ne peut pas y changer le statut).", "Statut de la course") }}</div>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap">
       {% for code, label in statuts %}
       <button type="button" class="tx-stbtn tx-st-{{ code }}{% if code == c.statut %} on{% endif %}"
               data-code="{{ code }}" onclick="majStatut({{ c.id }}, '{{ code }}')">{{ label }}</button>
       {% endfor %}
     </div>
-    <p class="access-note" style="text-align:left;margin:.6rem 0 0">
-      Le statut se met à jour ici, dans l'application. L'événement ajouté au
-      calendrier de ton téléphone reste figé (on ne peut pas y changer le statut).
-    </p>
   </section>
 
   {# ── Ajout au calendrier natif (iPhone .ics / Android Google Agenda) ── #}

@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Mon calendrier — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}calendrier{% endblock %}
 
@@ -95,13 +96,8 @@
   {% if vue == 'liste' %}
   {% if push_available and not deja_abonne %}
   <div class="fl-card tx-push" id="push-banner">
-    <div>
-      <b>Activer les notifications</b>
-      <p class="access-note" style="text-align:left;margin:.3rem 0 0">
-        Reçois une alerte à chaque nouvelle course assignée.
-        <br><span class="tx-ios-note">iPhone : ajoute d'abord l'app à ton écran d'accueil
-        (Partager → « Sur l'écran d'accueil »), puis rouvre-la depuis l'icône.</span>
-      </p>
+    <div style="display:flex;align-items:center">
+      <b>Activer les notifications</b>{{ ic.help("Reçois une alerte à chaque nouvelle course qui t'est assignée. Sur iPhone : ajoute d'abord l'app à ton écran d'accueil (bouton Partager → « Sur l'écran d'accueil »), puis rouvre-la depuis l'icône avant d'activer.", "Notifications") }}
     </div>
     <button class="btn ghost small" id="push-btn" onclick="activerPush()">Activer</button>
   </div>

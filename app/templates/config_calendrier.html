@@ -1,4 +1,5 @@
 {% extends "_layout.html" %}
+{% import "_icons.html" as ic %}
 {% block title %}Modèle de calendrier — {{ brand.prefix }}{{ brand.suffix }}{% endblock %}
 {% block badge %}modèle calendrier{% endblock %}
 
@@ -9,13 +10,7 @@
   </div>
 
   <section class="acct-section">
-    <h3>Export vers le calendrier (iPhone / Google Agenda)</h3>
-    <p class="access-note" style="text-align:left;margin:0 0 12px">
-      Quand un conducteur ajoute une course à son calendrier, l'événement est
-      rempli automatiquement. Tu peux personnaliser le <b>titre</b> et les
-      <b>notes</b> de l'événement en utilisant des <b>placeholders</b> entre
-      crochets — ils sont remplacés par les infos de la course.
-    </p>
+    <h3 class="tx-h-help">Export vers le calendrier (iPhone / Google Agenda){{ ic.help("Quand un conducteur ajoute une course à son calendrier, l'événement est rempli automatiquement. Tu peux personnaliser le titre et les notes de l'événement avec les mots entre crochets (placeholders) : ils sont remplacés par les infos de la course.", "Export calendrier") }}</h3>
 
     {% if impersonating %}
       <div class="fl-card"><p class="access-text" style="text-align:left">Reviens à
@@ -40,21 +35,14 @@
     <form method="post" action="{{ url_for('config.calendrier_save') }}"
           style="display:flex;flex-direction:column;gap:14px">
       <div>
-        <label class="fl-label" for="titre">Titre de l'événement</label>
+        <label class="fl-label tx-h-help" for="titre">Titre de l'événement{{ ic.help("Conseil : mets le nom de la personne + le trajet (départ → arrivée). Utilise les placeholders entre crochets pour insérer les infos de la course.", "Titre de l'événement") }}</label>
         <input class="tx-input" type="text" name="titre" id="titre" value="{{ titre }}"
                onfocus="lastField=this" placeholder="{{ default_titre }}">
-        <p class="access-note" style="text-align:left;margin:.3rem 0 0">
-          Conseil : le nom de la personne + le trajet (départ → arrivée).
-        </p>
       </div>
       <div>
-        <label class="fl-label" for="notes">Notes de l'événement</label>
+        <label class="fl-label tx-h-help" for="notes">Notes de l'événement{{ ic.help("Écris librement, en insérant des placeholders. Exemple d'une ligne : « Prix : [prix] ». Un placeholder sans valeur devient simplement vide.", "Notes de l'événement") }}</label>
         <textarea class="tx-input tx-area" name="notes" id="notes" rows="8"
                   onfocus="lastField=this">{{ notes }}</textarea>
-        <p class="access-note" style="text-align:left;margin:.3rem 0 0">
-          Écris librement, en insérant des placeholders. Exemple d'une ligne :
-          <code>Prix : [prix]</code>. Un placeholder sans valeur devient vide.
-        </p>
       </div>
 
       <div class="fl-card" style="background:var(--bg)">
