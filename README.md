@@ -1,46 +1,181 @@
 <div align="center">
 
-# site-base — modèle en couches
+# VTC — Gestion des courses
 
-**Fondation réutilisable pour démarrer un projet web.** Thème « RecipeLog »
-(dark + doré), authentification multi-comptes derrière **Cloudflare Zero Trust**,
-notifications **BotPanel**, et un **socle verrouillé qui se met à jour tout seul**.
+**Application web (installable comme une app sur mobile) pour gérer une activité de
+taxi / VTC.** Planifie tes courses, gère tes clients et tes tarifs, reçois des
+notifications, suis tes statistiques et exporte vers ton calendrier — le tout dans
+une interface sombre soignée, sécurisée derrière **Cloudflare**, et qui **fonctionne
+même hors connexion** (en lecture).
+
+Thème « RecipeLog » (dark + doré) · PWA installable · multi-conducteurs.
 
 </div>
 
 ---
 
-> ## 🟡 À LIRE EN PREMIER (dev IA)
->
-> Ce dépôt a **deux couches** :
-> - **`base/`** = la fondation (login, thème, permissions, page Paramètres, mises
->   à jour). **Tu n'y touches JAMAIS.** Elle se met à jour toute seule.
-> - **`app/`** = **ton projet** (tes écrans, tes tables, tes réglages). **Tout ton
->   travail vit ici.** Modèle de départ prêt : **`app.example/`** → copie-le en `app/`.
->
-> **Les 3 règles d'or :**
-> 1. **Ne modifie jamais `base/`.** (Un verrou CI + pre-commit le refuse — voir plus bas.)
-> 2. **Développe le métier sur sa propre branche**, jamais mélangée avec la base.
-> 3. Si tu crois qu'il faut changer `base/` → **arrête-toi et demande au propriétaire.**
->
-> Contrat complet : [`CLAUDE.md`](CLAUDE.md) · Modèle détaillé : [`docs/modele-couches.md`](docs/modele-couches.md)
+## À quoi sert ce site ?
+
+C'est le **poste de commande d'un chauffeur (ou d'une petite équipe) de taxi/VTC**.
+Depuis ton téléphone (ajouté à l'écran d'accueil comme une vraie app) ou ton
+ordinateur, tu peux :
+
+- **saisir une course** en quelques secondes (ou coller le message d'un client et
+  laisser l'IA remplir les champs),
+- **planifier** : chaque course a une date/heure, un départ, une arrivée, un prix et
+  un **conducteur assigné** ;
+- **suivre l'avancement** : « à faire » → « en cours » → « terminée » (ou annulée) ;
+- **gérer tes clients habitués, tes lieux fréquents et tes grilles de tarifs** pour
+  ressaisir une course répétitive en un clic ;
+- **être prévenu** par notification à chaque course assignée ;
+- **ajouter la course à ton agenda** (iPhone / Google) ;
+- **analyser ton activité** (chiffre d'affaires, courses, meilleurs clients…).
+
+Deux rôles : **toi** (super-admin, appelé « admin » dans l'app, tu gères tout) et les
+**conducteurs**. Une course est créée par quelqu'un puis assignée à un conducteur, qui
+la voit dans son calendrier et reçoit une notification.
 
 ---
 
-## Ce que tu obtiens gratuitement (dans `base/`, sans rien coder)
+## Fonctionnalités
 
-- 🎨 **Thème RecipeLog** — dark, accent doré `#e8c547`, DM Serif Display + DM Mono.
-  Réutilise ses classes (`fl-card`, `fl-title-serif`, `.btn`…) via `{% extends "base.html" %}`.
-- 🔐 **Auth v2 multi-comptes** — cycle `pending → actif / refused / bloqué`, rôles
-  `super_admin` / `membre`, « voir en tant que » (impersonation) + bandeau, audit.
-- ☁️ **Cloudflare Zero Trust** — e-mail vérifié par **JWT** (`RS256` + `aud` + `iss`),
-  login local par mot de passe en LAN. Réglable dans l'UI (Paramètres → Cloudflare / Accès).
-- 🔔 **Notifications BotPanel** — helper `notify(slug, **vars)` déjà branché sur le
-  cycle de vie des comptes.
-- 🧩 **Permissions par site** — gestion des comptes, profils, mot de passe, mises à
-  jour, chacune `off` / `membre` / `super_admin` (`python manage.py setup`).
-- 🔄 **Deux mises à jour, deux pages** — voir plus bas.
-- 🔒 **Base verrouillée** — CI + pre-commit refusent toute modif de `base/` dans un projet.
+### 📅 Calendrier / Accueil
+- Trois vues : **Liste**, **Mois**, **Semaine** (l'app **retient ta dernière vue**).
+- **Filtres** : par statut (À faire, En cours, Terminées, Annulées, Toutes), par jour
+  (Aujourd'hui, Demain, un **jour précis**, une **période**), par **conducteur**, et
+  **tri** (par date de course ou par date d'ajout).
+- Le **jour de la semaine** est affiché ; une course passe **automatiquement** en
+  « en cours » à son heure, et reste ainsi jusqu'à ce que tu la marques « terminée ».
+- Cartes **colorées par statut** (liseré à gauche) pour repérer d'un coup d'œil.
+
+### ➕ Créer / modifier une course
+- **Extraction IA** : colle le message d'un client, l'app remplit le nom, le
+  téléphone, les adresses et l'heure (fournisseurs gratuits : **Gemini, Mistral,
+  Groq** — au choix, sans carte bancaire).
+- Saisie guidée : on choisit **la ville puis l'adresse** (filtrée par ville), avec
+  **lieux fréquents** et **adresses habituelles du client** proposés en un clic.
+- **Bascule « Note »** sur un champ départ/arrivée : quand ce n'est pas une vraie
+  adresse (« devant la boulangerie »), on le marque comme note → **pas de ville
+  ajoutée, pas d'estimation**.
+- **Inverser** départ ↔ arrivée, **dupliquer** une course (sans l'horaire),
+  **modifier** une course existante.
+- **Prix** : grille tarifaire **sélectionnée automatiquement** selon le trajet, ou
+  prix libre.
+- **Estimation** durée + distance calculée **en arrière-plan** (l'ajout reste
+  instantané).
+- **Liens Google Maps** acceptés dans une adresse : au clic ils s'ouvrent **dans
+  Waze**, et servent aussi à **estimer** le trajet.
+
+### 👤 Clients habitués
+- Nom + **téléphone toujours formaté** (06 12 34 56 78) + **plusieurs adresses
+  nommées** (Maison, Travail…).
+- **Autocomplétion** à la création d'une course (nom → téléphone + notes se
+  remplissent), **détection de doublon** de numéro.
+- Adresses **cliquables** partout (ouvrir dans Waze / Maps / copier), téléphones
+  cliquables pour appeler.
+
+### 🏙️ Villes, lieux fréquents & tarifs
+- **Villes desservies** : liste gérable (ajout à l'unité ou **coller une liste**).
+- **Lieux fréquents** (gares, aéroports, points récurrents), chacun rattaché à une
+  ville, servant de **boutons de présélection** dans le formulaire.
+- **Grilles tarifaires** : un tarif relie un **départ** à une **arrivée**, chaque
+  extrémité pouvant être une **ville** ou un **lieu**. Tarif **bidirectionnel** (↔)
+  pour couvrir l'aller **et** le retour d'un seul coup.
+
+### 📊 Statistiques (interactives)
+- **Filtre de période** : ce mois-ci, mois dernier, 90 jours, année, **personnalisé
+  (du…au)**, tout l'historique.
+- **Indicateurs cliquables** (CA réalisé, CA à venir, nombre de courses, terminées,
+  prix moyen, distance, temps de conduite, taux d'annulation, clients) : un **« i »**
+  ouvre une pop-up qui **explique chaque chiffre**.
+- **Graphiques tactiles** : chiffre d'affaires par jour/mois, courses par jour de la
+  semaine, répartition par statut, meilleurs clients — **touche une barre** pour voir
+  la valeur exacte.
+
+### 🔔 Notifications (Web Push)
+- Une **alerte est envoyée au conducteur** à chaque course qui lui est assignée
+  (technologie Web Push / VAPID, fonctionne en PWA).
+- **Message personnalisable** (titre + texte, avec des variables entre crochets) et
+  **bouton de test** pour vérifier les appareils d'un conducteur.
+
+### 🗓️ Export vers le calendrier
+- Une course s'ajoute à ton agenda **iPhone (.ics)** ou **Google Agenda**, avec
+  l'**heure locale correcte** (pas de décalage horaire).
+
+### ❓ Aide contextuelle
+- Partout où c'était utile, un petit **« ? »** à côté d'une fonctionnalité ouvre une
+  **mini pop-up d'explication** — l'interface reste épurée, l'aide est à un clic.
+
+---
+
+## Application installable (PWA)
+
+Le site s'installe **comme une application** sur l'écran d'accueil (iPhone : Partager
+→ « Sur l'écran d'accueil »). Une fois installé :
+
+- **Plein écran**, sans barre de navigateur, avec une **barre de navigation en bas**
+  fiable (fini le bug iOS où elle « décrochait »).
+- **Lancement rapide** : le service worker met en cache le style et les icônes.
+- **Mode hors ligne (lecture)** : sans réseau, l'app **réaffiche les dernières pages
+  consultées** au lieu d'une erreur. *(La création de course hors ligne n'est pas
+  encore gérée — voir « Idées / suite ».)*
+
+---
+
+## Nouveautés récentes
+
+Les derniers ajouts et correctifs apportés à l'application :
+
+- **Statistiques avancées et interactives** (période, indicateurs expliqués,
+  graphiques tactiles).
+- **Bascule « Note »** pour distinguer une vraie adresse d'un simple repère.
+- **Aide « ? » contextuelle** qui remplace les longs textes explicatifs.
+- **Mode hors ligne** (lecture) + **cache PWA** pour un démarrage plus rapide.
+- **Ajout de course instantané** : l'estimation de trajet et l'envoi de la
+  notification se font **en arrière-plan** (avant, l'ajout pouvait attendre 20–30 s
+  le réseau).
+- **Corrections** : barre de navigation iOS qui décrochait, **heure décalée** à
+  l'export calendrier, **cartes qui devenaient jaunes**, **fiabilité de la base de
+  données** (plus de risque de perdre une estimation), **anti double-création** de
+  course.
+
+Historique complet de la couche fondation : [`CHANGELOG.md`](CHANGELOG.md).
+
+---
+
+## Sécurité & fiabilité (en bref)
+
+- **Accès protégé par Cloudflare Zero Trust** : l'e-mail est vérifié par **JWT**
+  (`RS256` + `aud`), avec un login local par mot de passe en réseau local.
+- Les **données sont enregistrées immédiatement** sur le serveur (SQLite) à chaque
+  action ; la base attend un verrou au lieu d'échouer (`busy_timeout`).
+- Les réponses `/api/*` sont en **`no-store`**, le dernier super-admin est
+  indestructible, anti-force-brute au login.
+
+---
+
+## Architecture — deux couches
+
+Ce dépôt est organisé en **deux couches** ; c'est important à comprendre pour le
+développement :
+
+- **`base/`** = la **fondation verrouillée** (login, thème, permissions, page
+  Paramètres, mécanisme de mise à jour). **On n'y touche jamais** : elle se met à jour
+  toute seule (Paramètres → « Mettre à jour la base »). Elle **n'est pas versionnée**
+  dans le projet (fournie par `bootstrap_base.py`).
+- **`app/`** = **le métier VTC** (tous les écrans et tables décrits ci-dessus). **Tout
+  le travail se fait ici.**
+
+> 📖 Contrat de développement complet : [`CLAUDE.md`](CLAUDE.md) · modèle détaillé :
+> [`docs/modele-couches.md`](docs/modele-couches.md) · spec métier :
+> [`docs/taxi-vtc.md`](docs/taxi-vtc.md).
+
+**Deux pages de réglages, deux mises à jour :**
+
+| | Page | Bouton | Concerne |
+|---|---|---|---|
+| **Site** (fondation) | `/parametres` | « Mettre à jour la base » | Cloudflare, comptes, socle |
+| **Application** (métier) | `/reglages` | « Mettre à jour le site » | tes courses, tarifs, lieux… |
 
 ---
 
@@ -52,11 +187,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Dans `.env`, mets au minimum :
+Dans `.env`, au minimum :
 
 ```env
 SECRET_KEY=une-longue-chaine-aleatoire
-SUPERADMIN_PASSWORD=tonMotDePasse       # login LAN
+SUPERADMIN_PASSWORD=tonMotDePasse       # login en local
 CF_VERIFY_JWT=false                       # dev sans Cloudflare
 ALLOW_LOCAL_LOGIN=true
 ```
@@ -64,154 +199,17 @@ ALLOW_LOCAL_LOGIN=true
 Puis :
 
 ```bash
-python run.py            # → http://127.0.0.1:8000  (login avec SUPERADMIN_PASSWORD)
+python run.py            # → http://127.0.0.1:8000  (connexion avec SUPERADMIN_PASSWORD)
 ```
 
-`run.py` assemble tout seul `base/` + `app/` (rien à configurer côté chemins).
-Sans dossier `app/`, la base tourne seule (écran de démo).
+`run.py` assemble automatiquement `base/` + `app/`.
 
 ---
-
-## Ajouter ton métier (le workflow)
-
-```bash
-python bootstrap_base.py       # récupère base/ (fondation) depuis site-base
-cp -r app.example app          # démarre ton projet (la SEULE chose versionnée)
-echo "base/" >> .gitignore     # base/ n'est jamais committée dans un projet
-python run.py                  # l'accueil devient celui de app/
-```
-
-> **`base/` n'est pas versionnée dans un projet** : elle est fournie par
-> `bootstrap_base.py` (installation) et par « Mettre à jour la base » (`sync_base`).
-> Le dev ne peut donc rien pousser qui concerne la base. Prompt prêt à donner à un
-> dev IA : [`docs/prompt-migration.md`](docs/prompt-migration.md).
-
-Tu édites **uniquement** `app/` :
-
-| Fichier | Rôle |
-|---|---|
-| `app/__init__.py` | `register(flask_app)` : branche tes blueprints. Déclare tes réglages via `flask_app.config["APP_REGLAGES_TEMPLATE"] = "app_reglages.html"`. |
-| `app/routes.py` | tes écrans. Réutilise la base : `from panel.auth import login_required, current_compte` ; `from panel.db import get_db`. |
-| `app/templates/` | tes gabarits. `{% extends "base.html" %}` → thème + en-tête + bandeau d'impersonation gratuits. Priment sur ceux de la base. |
-| `app/schema.sql` | tes tables métier (exécuté automatiquement au démarrage). |
-
-### Points d'extension fournis par la base
-
-| Prise | Ce que tu fournis |
-|---|---|
-| **Écrans** | `register(flask_app)` enregistre tes blueprints (dont l'accueil `/`). |
-| **Templates** | `app/templates/` s'ajoute et **prime** sur ceux de la base. |
-| **Tables** | `app/schema.sql` est exécuté en plus du schéma de la base. |
-| **Réglages** | `APP_REGLAGES_TEMPLATE` → la page **`/reglages`** de la base inclut ton partial (même thème, même cadre). Stocke tes options avec `panel.settings.set_setting` / `get_setting`. |
-
-### Données par utilisateur (cloisonnées)
-
-Nomme ta colonne **`compte_id`** et filtre par le compte **effectif** (impersonation
-incluse) :
-
-```python
-cid = current_compte()["id"]
-get_db().execute("SELECT * FROM films WHERE compte_id = ?", (cid,))
-```
-
-Bonus : la base sait réattribuer/fusionner ces lignes lors d'un changement d'e-mail
-(`manage.py set_email`). Décision **partagé vs cloisonné** à poser au propriétaire.
-
----
-
-## Deux pages, deux mises à jour (base vs application)
-
-Tout est dessiné par la base → **identique sur tous tes sites** :
-
-| | Page | Bouton de mise à jour | Verrouillé ? |
-|---|---|---|---|
-| **Site** (base) | `/parametres` | « Mettre à jour la base » (`sync_base`) | ✅ dans `base/` |
-| **Application** (métier) | `/reglages` | « Mettre à jour l'application » (git du projet) | ❌ c'est ton `app/` |
-
-Le **mécanisme** des deux boutons vit dans la base verrouillée (impossible à casser) ;
-seule la **cible** change. La page `/reglages` appartient à la base (cadre + thème),
-son **contenu** vient de ton partial `app_reglages.html`.
-
----
-
-## Le verrou (pourquoi tu **ne peux pas** casser la base)
-
-Deux garde-fous, en plus des règles d'or :
-
-- **CI GitHub** — `.github/workflows/protect-base.yml` : tout push/PR modifiant
-  `base/` dans un dépôt projet **échoue** (le dépôt site-base lui-même est exclu).
-- **Hook pre-commit** — `.githooks/pre-commit` : bloque un commit local touchant
-  `base/`. À activer une fois par projet :
-
-  ```bash
-  git config core.hooksPath .githooks
-  ```
-
-Rappel : `sync_base` **écrase** `base/` — toute modif locale y serait perdue.
-
----
-
-## Commandes (`manage.py`)
-
-```bash
-python manage.py setup [--preset hub|perso]   # pose chaque permission, écrit .env
-python manage.py reset_admin ["nouveau_mdp"]  # réinitialise le mot de passe admin
-python manage.py set_email <email> | --clear  # rattache/fusionne l'e-mail admin
-python manage.py sync_base [--ref 2.1.0]      # met à jour la couche base/
-```
-
-**Presets :** `hub` (données partagées : gestion des comptes on, impersonation off)
-· `perso` (données cloisonnées : accès auto en actif, impersonation on).
-
-## Tests
-
-```bash
-python tests/test_site.py     # batterie complète : 50 vérifs (base + surcouche)
-```
-
-Couvre auth, sécurité API (401 + `no-store`), cycle de vie des comptes, dernier
-super-admin indestructible, impersonation, site perso, réglages, mises à jour,
-et le branchement d'une surcouche `app/`. Aucune dépendance (pas besoin de pytest).
-
----
-
-## Écrans d'auth (fournis par la base)
-
-| Écran | Quand | Template |
-|---|---|---|
-| Login local | Accès LAN (mot de passe super-admin) | `login.html` |
-| Demander un accès | E-mail CF autorisé mais inconnu (hub) | `demande.html` |
-| En attente | Compte `pending` | `attente.html` |
-| Refusé | Compte `refused` | `refus.html` |
-| Suspendu | Compte `bloqué` | `bloque.html` |
-| Comptes (gestion) | Super-admin (hub) | `comptes.html` |
-| Paramètres du site | Admin | `parametres.html` |
-| Réglages de l'app | Point d'extension surcouche | `reglages.html` (+ ton partial) |
-| Mot de passe oublié | Depuis le login | `oubli.html` |
-
-Maquettes de référence : [`docs/maquettes-auth-v2/`](docs/maquettes-auth-v2/). Ces
-écrans sont un **contrat visuel** : ils vivent dans `base/`, tu n'y touches pas.
-
-## Configuration `.env` (variables clés)
-
-| Variable | Rôle |
-|---|---|
-| `SECRET_KEY` | signe les sessions (obligatoire). |
-| `SUPERADMIN_PASSWORD` / `SUPERADMIN_EMAIL` | amorce le compte super-admin. |
-| `CF_VERIFY_JWT` | `true` en prod (vérifie le JWT Cloudflare), `false` en dev LAN. |
-| `ALLOW_LOCAL_LOGIN` | autorise le login par mot de passe (LAN). |
-| `SESSION_COOKIE_SECURE` | `true` en prod (HTTPS). |
-| `CF_ACCESS_TEAM_DOMAIN` / `CF_ACCESS_AUD` | équipe + AUD Cloudflare (aussi réglables dans l'UI). |
-| `BRAND_PREFIX` / `BRAND_SUFFIX` / `BRAND_BADGE` | ta marque. Logo : `base/panel/static/logo.svg`. |
-| `CAP_*` | niveaux de permissions (ou `manage.py setup`). |
-| `BOTPANEL_URL` | active les notifications (vide = désactivées). |
 
 ## Installation (Proxmox + Cloudflare)
 
-`install.sh` détecte automatiquement **deux modes**.
-
-**Option 1 — une commande, sur le shell du nœud Proxmox** (crée le conteneur LXC
-Debian **et** installe VTC dedans, écoute sur l'IP du conteneur) :
+En une commande, depuis le shell d'un nœud **Proxmox** (crée le conteneur LXC **et**
+installe l'app dedans) :
 
 ```bash
 ADMIN_EMAIL=toi@gmail.com \
@@ -219,76 +217,54 @@ ADMIN_EMAIL=toi@gmail.com \
 ```
 
 > Options : `CTID=130 STORAGE=local-lvm BRIDGE=vmbr0 ADMIN_PASSWORD=… REPO_REF=… BIND=0.0.0.0:8000`.
-> Tant que `main` ne porte pas encore le nouveau socle, ajoute
-> `REPO_REF=claude/migration-nouveau-socle` (et vise ce chemin dans l'URL).
-> En passant `ADMIN_EMAIL=` dès l'install, ton super-admin est créé d'emblée avec
-> ton e-mail Google (login mot de passe **et** Cloudflare) — rien à régler ensuite.
+> Pour exposer publiquement, place un **tunnel Cloudflare** devant et passe
+> `CF_VERIFY_JWT=true` + `SESSION_COOKIE_SECURE=true`.
 
-**Option 2 — dans un conteneur / une VM déjà prête** (installe en place) :
-
-```bash
-sudo bash /opt/site-base/deploy/install_lxc.sh   # venv + amorçage base/ + service systemd
-```
-
-Détails : conteneur `site-base` sous `/opt/site-base`, service systemd
-`site-base`, `base/` récupérée par `bootstrap_base.py` (jamais versionnée),
-mise à jour sans sudo (SIGHUP gunicorn). Pour exposer publiquement, mets un
-**tunnel Cloudflare** devant et passe `CF_VERIFY_JWT=true` +
-`SESSION_COOKIE_SECURE=true`. Guide complet :
-[`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md).
+Sur un conteneur/VM déjà prêt : `sudo bash deploy/install_lxc.sh`.
+Guide complet : [`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md).
 
 ---
 
-## Fonctions métier VTC
+## Commandes & tests
 
-Le métier taxi/VTC vit dans `app/` (voir `CLAUDE.md` §6). Quelques fonctions clés :
+```bash
+python manage.py setup [--preset hub|perso]   # pose les permissions, écrit .env
+python manage.py reset_admin ["nouveau_mdp"]  # réinitialise le mot de passe admin
+python manage.py set_email <email> | --clear  # rattache/fusionne l'e-mail admin
+python manage.py sync_base [--ref 2.1.0]      # met à jour la couche base/
 
-### Clients habitués & adresses multiples
-- Un client peut avoir **plusieurs adresses habituelles**. Dans **Réglages →
-  Clients habitués**, chaque fiche a un champ + bouton **« Ajouter »** : on saisit
-  une adresse, on l'ajoute à la liste, et on peut **supprimer** chaque adresse
-  individuellement (✕). Stockées en JSON dans `clients.adresses`.
-- À la **création d'une course**, quand on choisit un client habitué (auto-
-  complétion), ses adresses habituelles s'affichent en **puces cliquables** sous
-  « départ » et « arrivée » : les courses répétitives se saisissent en un clic.
-- Si une adresse habituelle correspond à un **lieu fréquent** enregistré, le clic
-  relie le lieu → **auto-sélection de la grille tarifaire** (départ → arrivée).
+python tests/test_site.py                     # batterie de vérifications (base + métier)
+```
 
-### Villes & lieux fréquents
-- **Villes desservies** : liste gérable (Réglages → Lieux fréquents). Chaque
-  **lieu** est rattaché à une ville (menu déroulant). Les lieux sont **regroupés
-  par ville** dans la liste.
-- À la **création d'une course**, on choisit **d'abord la ville**, puis
-  l'**adresse** se filtre sur les lieux de cette ville (départ et arrivée). Les
-  villes enregistrées sont proposées en suggestion.
-- Colonne `lieux.ville_id` ajoutée automatiquement aux bases existantes par
-  `app.courses.ensure_schema()` (appelée au démarrage).
+Diagnostics serveur : `deploy/check_timezone.sh` (fuseau horaire),
+`deploy/check_estimation.sh` (connectivité géocodage / itinéraire).
 
-### Autres fonctions
-- **Lieux fréquents** collaboratifs (autocomplétion « tape gare… »), **grilles
-  tarifaires** lieu→lieu avec auto-sélection, **extraction IA** d'un message
-  client, **estimation** de trajet (OSM, best-effort), **Web Push** (PWA),
-  **export calendrier** (ICS / Google), **noms d'affichage** des conducteurs.
-- Diagnostics serveur : `deploy/check_timezone.sh` (fuseau horaire) et
-  `deploy/check_estimation.sh` (connectivité géocodage/itinéraire).
+---
+
+## Idées / suite
+
+- **Mode hors ligne — écriture** : créer une course sans réseau et l'**envoyer plus
+  tard** (à la prochaine ouverture avec connexion). *(Non implémenté — sur iPhone la
+  synchro automatique en arrière-plan n'est pas fiable.)*
 
 ---
 
 ## Documentation
 
-- [`CLAUDE.md`](CLAUDE.md) — **contrat de reproduction** (à lire en premier).
-- [`docs/modele-couches.md`](docs/modele-couches.md) — **base verrouillée + surcouche** (l'essentiel du dev IA).
-- [`docs/prompt-migration.md`](docs/prompt-migration.md) — **prompt prêt à donner** à un dev IA pour migrer/démarrer un site.
-- [`docs/guide-developpeur.md`](docs/guide-developpeur.md) — comprendre le code (architecture, pourquoi, recettes).
-- [`docs/authentification-v2.md`](docs/authentification-v2.md) — spec complète de l'auth (sécurité §9).
+- [`CLAUDE.md`](CLAUDE.md) — contrat de développement (à lire en premier).
+- [`docs/taxi-vtc.md`](docs/taxi-vtc.md) — spécification métier VTC.
+- [`docs/modele-couches.md`](docs/modele-couches.md) — base verrouillée + surcouche.
+- [`docs/guide-developpeur.md`](docs/guide-developpeur.md) — comprendre le code.
+- [`docs/authentification-v2.md`](docs/authentification-v2.md) — spec de l'auth (sécurité).
 - [`docs/theme-recipelog.md`](docs/theme-recipelog.md) — cahier des charges du thème.
-- [`docs/permissions.md`](docs/permissions.md) — permissions par site (hub vs perso).
-- [`docs/notifications-botpanel.md`](docs/notifications-botpanel.md) — intégration BotPanel.
-- [`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md) — Proxmox + Cloudflare + mise à jour.
-- [`docs/versions.md`](docs/versions.md) — versionnage (tags `vX.Y.Z`) & rollback.
+- [`docs/permissions.md`](docs/permissions.md) — permissions par site.
+- [`docs/notifications-botpanel.md`](docs/notifications-botpanel.md) — notifications BotPanel.
+- [`docs/deploiement-proxmox.md`](docs/deploiement-proxmox.md) — Proxmox + Cloudflare.
 - [`docs/mobile-anti-zoom.md`](docs/mobile-anti-zoom.md) — comportement « app native » mobile.
+- [`docs/versions.md`](docs/versions.md) — versionnage & rollback.
 - [`CHANGELOG.md`](CHANGELOG.md) — historique des versions.
 
 ## Stack
 
-Flask 3 · SQLite · gunicorn · PyJWT · Jinja2 · CSS pur (thème RecipeLog).
+Flask 3 · SQLite · gunicorn · PyJWT · Jinja2 · CSS pur (thème RecipeLog) ·
+PWA (service worker + Web Push).
