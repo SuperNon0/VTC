@@ -136,6 +136,23 @@ async function majStatut(id, statut) {
     b.classList.toggle('on', b.dataset.code === statut);
   });
   toast('Statut : ' + j.label + ' ✓');
+  // Revient automatiquement à la page précédente (liste / calendrier),
+  // rechargée pour refléter le nouveau statut.
+  setTimeout(retourPagePrecedente, 450);
+}
+function retourPagePrecedente() {
+  var ref = document.referrer;
+  if (ref) {
+    try {
+      var u = new URL(ref);
+      if (u.origin === location.origin && u.href !== location.href) {
+        location.href = ref;   // recharge la page d'origine (données à jour)
+        return;
+      }
+    } catch (e) { /* referrer illisible → repli ci-dessous */ }
+  }
+  if (history.length > 1) { history.back(); return; }
+  location.href = '{{ url_for("main.dashboard") }}';
 }
 </script>
 {% endblock %}
