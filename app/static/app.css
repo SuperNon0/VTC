@@ -252,6 +252,17 @@
 .tx-stat { text-align: center; }
 
 /* --- Statistiques avancées (KPIs + graphiques) --------------------------- */
+/* Période personnalisée (Du / Au) — alignée + lisible en thème sombre. */
+.tx-perso-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.tx-perso-field { flex: 1 1 140px; display: flex; flex-direction: column; gap: 0.3rem; }
+.tx-perso-field .fl-label { margin: 0; }
+.tx-date {
+  color-scheme: dark;            /* sélecteur de date natif (iOS) en mode sombre */
+  width: 100%;
+  min-height: 46px;
+}
+.tx-perso-go { width: 100%; margin-top: 0.9rem; }
+
 .tx-kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

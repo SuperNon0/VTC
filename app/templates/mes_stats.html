@@ -34,19 +34,19 @@
   </div>
 
   {% if periode_actif == 'perso' %}
-  <form method="get" class="fl-card" style="margin-bottom:1rem">
+  <form method="get" class="fl-card tx-perso" style="margin-bottom:1rem">
     <input type="hidden" name="p" value="perso">
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-      <div style="flex:1;min-width:130px">
-        <label class="fl-label">Du</label>
-        <input class="tx-input" type="date" name="du" value="{{ du }}">
-      </div>
-      <div style="flex:1;min-width:130px">
-        <label class="fl-label">Au</label>
-        <input class="tx-input" type="date" name="au" value="{{ au }}">
-      </div>
+    <div class="tx-perso-row">
+      <label class="tx-perso-field">
+        <span class="fl-label">Du</span>
+        <input class="tx-input tx-date" type="date" name="du" value="{{ du }}">
+      </label>
+      <label class="tx-perso-field">
+        <span class="fl-label">Au</span>
+        <input class="tx-input tx-date" type="date" name="au" value="{{ au }}">
+      </label>
     </div>
-    <button class="btn" type="submit" style="margin-top:.7rem">Afficher</button>
+    <button class="btn primary tx-perso-go" type="submit">Afficher la période</button>
   </form>
   {% endif %}
 
