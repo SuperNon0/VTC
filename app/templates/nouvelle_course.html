@@ -434,6 +434,10 @@ async function extraireIA() {
       if (parts[0]) document.getElementById('date').value = parts[0];
       if (parts[1]) document.getElementById('heure').value = parts[1].slice(0, 5);
     }
+    // Déduit la VILLE (départ/arrivée) depuis l'adresse extraite si elle contient
+    // une ville connue — le menu « ville » se renseigne tout seul.
+    devinerVilleDepuisTexte('depart');
+    devinerVilleDepuisTexte('arrivee');
     autoMatchTarif();
     toast('Infos extraites ✓ — vérifie puis complète.');
   } catch (e) {
@@ -585,11 +589,17 @@ function devinerVilleDepuisTexte(field) {
   var inp = document.getElementById(field);
   var vs = document.getElementById('ville-' + field);
   if (!inp || !vs || vs.value) return;          // déjà une ville choisie → on ne touche pas
-  var n = _norm(inp.value);
-  if (!n) return;
+  // Comparaison tolérante : on ignore accents, ponctuation, espaces ET l'article
+  // initial (« Le Grau-du-Roi » reconnu dans « gare du Grau-du-Roi »).
+  function cleCmp(s) { return _norm(s).replace(/[^a-z0-9]+/g, ''); }
+  function sansArticle(s) { return s.replace(/^\s*(les|le|la|l['’])\s*/i, ''); }
+  var hay = cleCmp(inp.value);
+  if (!hay) return;
   var best = null;
   (window.VILLES || []).forEach(function (v) {
-    if (n.indexOf(_norm(v.nom)) !== -1 && (!best || v.nom.length > best.nom.length)) best = v;
+    var cands = [cleCmp(v.nom), cleCmp(sansArticle(v.nom))];
+    var trouve = cands.some(function (c) { return c && hay.indexOf(c) !== -1; });
+    if (trouve && (!best || v.nom.length > best.nom.length)) best = v;
   });
   if (best) vs.value = String(best.id);
 }
