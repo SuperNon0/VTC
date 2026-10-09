@@ -327,6 +327,22 @@ function _norm(s) {
   return (s || '').toString().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
+// Cl\u00e9 de comparaison tol\u00e9rante : sans accents, ponctuation ni espaces.
+function _cleCmp(s) { return _norm(s).replace(/[^a-z0-9]+/g, ''); }
+// Retrouve un lieu fr\u00e9quent dont le nom appara\u00eet dans le texte (ex. \u00ab CHU Grau
+// du Roi \u00bb) et remplit le champ avec SON ADRESSE compl\u00e8te. Renvoie true si trouv\u00e9.
+function resoudreLieuTexte(field, texte) {
+  var hay = _cleCmp(texte);
+  if (hay.length < 3) return false;
+  var best = null;
+  (window.LIEUX || []).forEach(function (l) {
+    var c = _cleCmp(l.nom);
+    if (c && c.length >= 3 && hay.indexOf(c) !== -1
+        && (!best || l.nom.length > best.nom.length)) best = l;
+  });
+  if (best) { choisirLieu(field, best.id); return true; }  // remplit nom + adresse + ville
+  return false;
+}
 // Compose une adresse « géocodable » : nom + adresse + ville, en n'ajoutant la
 // ville que si elle n'est pas DÉJÀ présente dans le nom/adresse (évite « … 34000
 // Montpellier, Montpellier »).
@@ -427,8 +443,16 @@ async function extraireIA() {
     var i = j.infos;
     if (i.nom) document.getElementById('client_nom').value = i.nom;
     if (i.telephone) document.getElementById('client_tel').value = i.telephone;
-    if (i.prise_en_charge) { document.getElementById('depart').value = i.prise_en_charge; matchLieuTexte('depart', i.prise_en_charge); }
-    if (i.depose) { document.getElementById('arrivee').value = i.depose; matchLieuTexte('arrivee', i.depose); }
+    // Départ / arrivée : si le texte désigne un lieu fréquent connu (« CHU Grau
+    // du Roi »…), on remplit SON adresse complète ; sinon on garde le texte.
+    if (i.prise_en_charge) {
+      document.getElementById('depart').value = i.prise_en_charge;
+      if (!resoudreLieuTexte('depart', i.prise_en_charge)) matchLieuTexte('depart', i.prise_en_charge);
+    }
+    if (i.depose) {
+      document.getElementById('arrivee').value = i.depose;
+      if (!resoudreLieuTexte('arrivee', i.depose)) matchLieuTexte('arrivee', i.depose);
+    }
     if (i.date_heure) {
       var parts = i.date_heure.split('T');
       if (parts[0]) document.getElementById('date').value = parts[0];
@@ -438,6 +462,12 @@ async function extraireIA() {
     // une ville connue — le menu « ville » se renseigne tout seul.
     devinerVilleDepuisTexte('depart');
     devinerVilleDepuisTexte('arrivee');
+    // Garde une trace du message d'origine dans les notes de la course.
+    var notesEl = document.getElementById('notes');
+    if (notesEl && msg && notesEl.value.indexOf(msg) === -1) {
+      var bloc = 'Message client :\n' + msg;
+      notesEl.value = notesEl.value.trim() ? (notesEl.value.trim() + '\n\n' + bloc) : bloc;
+    }
     autoMatchTarif();
     toast('Infos extraites ✓ — vérifie puis complète.');
   } catch (e) {
@@ -591,13 +621,12 @@ function devinerVilleDepuisTexte(field) {
   if (!inp || !vs || vs.value) return;          // déjà une ville choisie → on ne touche pas
   // Comparaison tolérante : on ignore accents, ponctuation, espaces ET l'article
   // initial (« Le Grau-du-Roi » reconnu dans « gare du Grau-du-Roi »).
-  function cleCmp(s) { return _norm(s).replace(/[^a-z0-9]+/g, ''); }
   function sansArticle(s) { return s.replace(/^\s*(les|le|la|l['’])\s*/i, ''); }
-  var hay = cleCmp(inp.value);
+  var hay = _cleCmp(inp.value);
   if (!hay) return;
   var best = null;
   (window.VILLES || []).forEach(function (v) {
-    var cands = [cleCmp(v.nom), cleCmp(sansArticle(v.nom))];
+    var cands = [_cleCmp(v.nom), _cleCmp(sansArticle(v.nom))];
     var trouve = cands.some(function (c) { return c && hay.indexOf(c) !== -1; });
     if (trouve && (!best || v.nom.length > best.nom.length)) best = v;
   });
